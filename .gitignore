@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+!.env.example
+
+# SQLite dev/test databases (schema lives in prisma/migrations instead)
+*.db
+*.db-journal
+
+.DS_Store

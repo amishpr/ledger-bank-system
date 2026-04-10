@@ -1,0 +1,95 @@
+// Ledger data model.
+//
+// Dev default is SQLite so the project runs with zero external
+// dependencies (`npm install && npm run prisma:migrate`). To run against
+// Postgres instead (recommended for anything beyond local dev), change
+// `provider` below to "postgresql" and point DATABASE_URL at the instance
+// started by the root docker-compose.yml — the schema itself needs no
+// other changes, since every column type used here (String, BigInt,
+// DateTime, enums) maps cleanly onto both engines.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+enum EntryDirection {
+  DEBIT
+  CREDIT
+}
+
+enum TransactionStatus {
+  POSTED
+  VOIDED
+}
+
+model Account {
+  id        String      @id @default(cuid())
+  name      String
+  type      AccountType
+  currency  String      @default("USD")
+  createdAt DateTime    @default(now())
+  entries   Entry[]
+
+  @@index([type])
+}
+
+// A Transaction is the atomic unit of the ledger: a set of Entries that
+// must balance (sum of debits == sum of credits) before it is ever
+// persisted. Nothing in this system mutates an account balance directly —
+// balances are always derived by summing posted entries.
+model Transaction {
+  id             String            @id @default(cuid())
+  description    String
+  status         TransactionStatus @default(POSTED)
+  // Client-supplied key for safe retries. A second request with the same
+  // key returns the original transaction instead of double-posting it.
+  idempotencyKey String?           @unique
+  // Hash of the normalized request body for the key above, so a key reused
+  // with a *different* payload is rejected as a conflict rather than
+  // silently returning the wrong transaction.
+  requestHash    String?
+  createdAt      DateTime          @default(now())
+  entries        Entry[]
+  auditLogs      AuditLog[]
+}
+
+model Entry {
+  id            String         @id @default(cuid())
+  transactionId String
+  transaction   Transaction    @relation(fields: [transactionId], references: [id])
+  accountId     String
+  account       Account        @relation(fields: [accountId], references: [id])
+  direction     EntryDirection
+  // Always positive, in minor units (cents). Never a float — money is
+  // counted, not measured, and floats lose cents over enough operations.
+  amountMinor   BigInt
+  createdAt     DateTime       @default(now())
+
+  @@index([accountId])
+  @@index([transactionId])
+}
+
+model AuditLog {
+  id            String       @id @default(cuid())
+  entityType    String
+  entityId      String
+  action        String
+  metadata      String
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+  createdAt     DateTime     @default(now())
+
+  @@index([entityType, entityId])
+}
