@@ -1,21 +1,36 @@
 :root {
-  --text: #4b5060;
-  --text-h: #0f1115;
-  --bg: #f5f6f8;
+  /* Deep indigo/navy as the single confident accent, cool slate neutrals,
+     and a soft blue-gray page background instead of flat white or gray.
+     This is a light-only palette by default: it never follows the OS
+     dark preference, so the dashboard doesn't surprise anyone with a
+     black background. Dark mode is opt-in only, via [data-theme="dark"]. */
+  --text: #4a5268;
+  --text-h: #101828;
+  --bg: #f4f6fb;
   --panel-bg: #ffffff;
-  --border: #e2e4ea;
-  --accent: #2f6feb;
-  --accent-bg: rgba(47, 111, 235, 0.1);
-  --positive: #0f8a5f;
-  --negative: #c93838;
-  --muted: #8890a0;
-  --shadow: rgba(15, 17, 21, 0.06) 0 1px 2px, rgba(15, 17, 21, 0.04) 0 8px 24px;
+  --panel-bg-subtle: #fafbfd;
+  --border: #e1e5ee;
+  --accent: #2947a3;
+  --accent-strong: #1c3480;
+  --accent-bg: rgba(41, 71, 163, 0.08);
+  --positive: #12805c;
+  --positive-bg: rgba(18, 128, 92, 0.1);
+  --negative: #b3261e;
+  --negative-bg: rgba(179, 38, 30, 0.09);
+  --muted: #7a8299;
+  --shadow: rgba(16, 24, 40, 0.04) 0 1px 2px, rgba(16, 24, 40, 0.06) 0 8px 24px;
+
+  --type-asset: #2947a3;
+  --type-liability: #a45c0f;
+  --type-equity: #6b3fa0;
+  --type-revenue: #12805c;
+  --type-expense: #b3261e;
 
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Consolas, monospace;
 
   font: 15px/1.5 var(--sans);
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -23,34 +38,31 @@
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --text: #b7bcc9;
-    --text-h: #f2f3f5;
-    --bg: #0f1115;
-    --panel-bg: #171a21;
-    --border: #262a33;
-    --accent: #5b9dff;
-    --accent-bg: rgba(91, 157, 255, 0.14);
-    --positive: #3ecf8e;
-    --negative: #ff6b6b;
-    --muted: #6b7180;
-    --shadow: rgba(0, 0, 0, 0.35) 0 1px 2px, rgba(0, 0, 0, 0.35) 0 8px 24px;
-  }
-}
-
 :root[data-theme="dark"] {
-  --text: #b7bcc9;
-  --text-h: #f2f3f5;
-  --bg: #0f1115;
-  --panel-bg: #171a21;
-  --border: #262a33;
-  --accent: #5b9dff;
-  --accent-bg: rgba(91, 157, 255, 0.14);
+  /* A deep navy dark mode, not black, only ever applied when chosen
+     explicitly with the theme toggle in the header. */
+  color-scheme: dark;
+  --text: #aeb6cc;
+  --text-h: #eef1f8;
+  --bg: #0f1729;
+  --panel-bg: #161f36;
+  --panel-bg-subtle: #131b30;
+  --border: #262f4a;
+  --accent: #6e8fef;
+  --accent-strong: #8ba4f2;
+  --accent-bg: rgba(110, 143, 239, 0.14);
   --positive: #3ecf8e;
-  --negative: #ff6b6b;
-  --muted: #6b7180;
-  --shadow: rgba(0, 0, 0, 0.35) 0 1px 2px, rgba(0, 0, 0, 0.35) 0 8px 24px;
+  --positive-bg: rgba(62, 207, 142, 0.12);
+  --negative: #ff8079;
+  --negative-bg: rgba(255, 128, 121, 0.12);
+  --muted: #7581a1;
+  --shadow: rgba(2, 6, 20, 0.4) 0 1px 2px, rgba(2, 6, 20, 0.45) 0 8px 24px;
+
+  --type-asset: #8ba4f2;
+  --type-liability: #e0a458;
+  --type-equity: #c397ec;
+  --type-revenue: #3ecf8e;
+  --type-expense: #ff8079;
 }
 
 * {
@@ -59,6 +71,8 @@
 
 body {
   margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
 }
 
 h1,

@@ -1,7 +1,7 @@
 .app {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 24px 20px 60px;
+  padding: 28px 20px 60px;
 }
 
 .app-header {
@@ -9,19 +9,47 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
 }
 
-.app-header h1 {
-  font-size: 28px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: linear-gradient(155deg, var(--accent), var(--accent-strong));
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 16px;
   letter-spacing: -0.5px;
+  flex-shrink: 0;
+  box-shadow: rgba(41, 71, 163, 0.28) 0 4px 10px -2px;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  letter-spacing: -0.3px;
 }
 
 .tagline {
   color: var(--muted);
   font-size: 13px;
   max-width: 46ch;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ws-status {
@@ -46,15 +74,33 @@
 
 .ws-open .ws-dot {
   background: var(--positive);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--positive) 25%, transparent);
+  box-shadow: 0 0 0 3px var(--positive-bg);
 }
 
 .ws-closed .ws-dot {
   background: var(--negative);
 }
 
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.theme-toggle:hover {
+  color: var(--text-h);
+  border-color: var(--accent);
+}
+
 .banner-error {
-  background: color-mix(in srgb, var(--negative) 12%, var(--panel-bg));
+  background: var(--negative-bg);
   border: 1px solid color-mix(in srgb, var(--negative) 35%, var(--border));
   color: var(--negative);
   padding: 10px 14px;
@@ -92,8 +138,9 @@
 }
 
 .panel h2 {
-  font-size: 15px;
+  font-size: 14px;
   margin-bottom: 12px;
+  letter-spacing: -0.1px;
 }
 
 /* Accounts */
@@ -107,22 +154,25 @@
 .account-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   text-align: left;
-  background: transparent;
+  background: var(--panel-bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-left: 3px solid transparent;
+  border-radius: 9px;
   padding: 10px 12px;
   color: var(--text);
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
 }
 
 .account-card:hover {
   border-color: var(--accent);
+  border-left-color: var(--accent);
 }
 
 .account-card.selected {
   border-color: var(--accent);
+  border-left-color: var(--accent);
   background: var(--accent-bg);
 }
 
@@ -141,18 +191,44 @@
 
 .account-type {
   font-size: 10px;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.4px;
   padding: 2px 7px;
   border-radius: 999px;
-  color: var(--muted);
-  border: 1px solid var(--border);
   white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.account-type-asset {
+  color: var(--type-asset);
+  background: color-mix(in srgb, var(--type-asset) 12%, transparent);
+}
+
+.account-type-liability {
+  color: var(--type-liability);
+  background: color-mix(in srgb, var(--type-liability) 14%, transparent);
+}
+
+.account-type-equity {
+  color: var(--type-equity);
+  background: color-mix(in srgb, var(--type-equity) 12%, transparent);
+}
+
+.account-type-revenue {
+  color: var(--type-revenue);
+  background: color-mix(in srgb, var(--type-revenue) 12%, transparent);
+}
+
+.account-type-expense {
+  color: var(--type-expense);
+  background: color-mix(in srgb, var(--type-expense) 12%, transparent);
 }
 
 .account-balance {
   font-family: var(--mono);
-  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
   font-weight: 600;
   color: var(--text-h);
 }
@@ -201,7 +277,7 @@ select {
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--panel-bg);
   color: var(--text-h);
 }
 
@@ -209,6 +285,7 @@ input:focus,
 select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 button[type="submit"],
@@ -217,9 +294,15 @@ button[type="submit"],
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 9px 14px;
+  padding: 9px 16px;
   font-size: 13px;
   font-weight: 600;
+  transition: background 0.15s ease;
+}
+
+button[type="submit"]:hover:not(:disabled),
+.new-account-form button:hover:not(:disabled) {
+  background: var(--accent-strong);
 }
 
 button[type="submit"]:disabled,
@@ -230,6 +313,9 @@ button[type="submit"]:disabled,
 
 .form-error {
   color: var(--negative);
+  background: var(--negative-bg);
+  border-radius: 6px;
+  padding: 6px 10px;
   font-size: 12px;
   margin: 6px 0;
 }
@@ -250,23 +336,28 @@ button[type="submit"]:disabled,
 .statement-table th {
   text-align: left;
   color: var(--muted);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 6px 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--border);
 }
 
 .statement-table td {
-  padding: 8px;
+  padding: 10px 8px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+}
+
+.statement-table tbody tr:hover {
+  background: var(--panel-bg-subtle);
 }
 
 .statement-table .num {
   text-align: right;
   font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .statement-table .muted {
@@ -285,7 +376,7 @@ button[type="submit"]:disabled,
 
 .direction-badge {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.4px;
   padding: 2px 8px;
   border-radius: 999px;
@@ -295,7 +386,12 @@ button[type="submit"]:disabled,
 
 .direction-badge.debit {
   color: var(--accent);
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: var(--accent-bg);
+}
+
+.direction-badge.credit {
+  background: var(--panel-bg-subtle);
 }
 
 .link-button {
@@ -348,7 +444,7 @@ button[type="submit"]:disabled,
 }
 
 .activity-tag.reversed {
-  background: color-mix(in srgb, var(--negative) 15%, transparent);
+  background: var(--negative-bg);
   color: var(--negative);
 }
 
@@ -362,5 +458,6 @@ button[type="submit"]:disabled,
 
 .activity-amount {
   font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
 }

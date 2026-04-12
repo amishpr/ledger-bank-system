@@ -6,8 +6,10 @@ import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { NewAccountForm } from "./components/NewAccountForm";
 import { StatementPanel } from "./components/StatementPanel";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { TransferForm } from "./components/TransferForm";
 import { useLedgerSocket } from "./useLedgerSocket";
+import { useTheme } from "./useTheme";
 
 const MAX_FEED_EVENTS = 20;
 
@@ -55,6 +57,7 @@ function App() {
   );
 
   const wsStatus = useLedgerSocket(handleLedgerEvent);
+  const { theme, toggleTheme } = useTheme();
 
   function handlePosted() {
     refreshAccounts();
@@ -66,13 +69,19 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div>
-          <h1>Ledger</h1>
-          <p className="tagline">A double-entry core-banking ledger with an append-only, idempotent transaction API.</p>
+        <div className="brand">
+          <span className="brand-mark">L</span>
+          <div>
+            <h1>Ledger</h1>
+            <p className="tagline">A double-entry core-banking ledger with an append-only, idempotent transaction API.</p>
+          </div>
         </div>
-        <div className={`ws-status ws-${wsStatus}`}>
-          <span className="ws-dot" />
-          {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Disconnected"}
+        <div className="header-actions">
+          <div className={`ws-status ws-${wsStatus}`}>
+            <span className="ws-dot" />
+            {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Disconnected"}
+          </div>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
 
