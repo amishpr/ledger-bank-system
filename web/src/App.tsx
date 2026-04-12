@@ -6,12 +6,16 @@ import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { NewAccountForm } from "./components/NewAccountForm";
 import { StatementPanel } from "./components/StatementPanel";
+import { StatsBar } from "./components/StatsBar";
 import { ThemeToggle } from "./components/ThemeToggle";
+import { ToastStack } from "./components/ToastStack";
 import { TransferForm } from "./components/TransferForm";
 import { useLedgerSocket } from "./useLedgerSocket";
 import { useTheme } from "./useTheme";
+import { useToasts } from "./useToasts";
 
 const MAX_FEED_EVENTS = 20;
+const PULSE_DURATION_MS = 900;
 
 function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -19,6 +23,7 @@ function App() {
   const [statement, setStatement] = useState<StatementLine[]>([]);
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [pulsingAccountIds, setPulsingAccountIds] = useState<Set<string>>(new Set());
 
   const refreshAccounts = useCallback(async () => {
     try {
@@ -52,12 +57,21 @@ function App() {
       if (selectedAccountId && event.affectedAccountIds.includes(selectedAccountId)) {
         refreshStatement(selectedAccountId);
       }
+      setPulsingAccountIds((prev) => new Set([...prev, ...event.affectedAccountIds]));
+      setTimeout(() => {
+        setPulsingAccountIds((prev) => {
+          const next = new Set(prev);
+          for (const id of event.affectedAccountIds) next.delete(id);
+          return next;
+        });
+      }, PULSE_DURATION_MS);
     },
     [refreshAccounts, refreshStatement, selectedAccountId],
   );
 
   const wsStatus = useLedgerSocket(handleLedgerEvent);
   const { theme, toggleTheme } = useTheme();
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
   function handlePosted() {
     refreshAccounts();
@@ -87,17 +101,26 @@ function App() {
 
       {loadError && <div className="banner-error">{loadError}</div>}
 
+      {accounts.length > 0 && <StatsBar accounts={accounts} />}
+
       <main className="app-grid">
         <div className="col">
-          <AccountsPanel accounts={accounts} selectedAccountId={selectedAccountId} onSelect={setSelectedAccountId} />
-          <NewAccountForm onCreated={refreshAccounts} />
-          <TransferForm accounts={accounts} onPosted={handlePosted} />
+          <AccountsPanel
+            accounts={accounts}
+            selectedAccountId={selectedAccountId}
+            pulsingAccountIds={pulsingAccountIds}
+            onSelect={setSelectedAccountId}
+          />
+          <NewAccountForm onCreated={refreshAccounts} onToast={pushToast} />
+          <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
         </div>
         <div className="col wide">
-          <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} />
+          <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
           <ActivityFeed events={events} />
         </div>
       </main>
+
+      <ToastStack toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

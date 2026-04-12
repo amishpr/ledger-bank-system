@@ -1,29 +1,36 @@
 import { useState } from "react";
 import { api, ApiRequestError } from "../api/client";
 import type { Account, StatementLine } from "../api/types";
+import { isLargeAmount } from "../flags";
 import { entryIncreasesBalance } from "../ledgerMath";
 import { formatMoney } from "../money";
+import { Sparkline } from "./Sparkline";
 
 export function StatementPanel({
   account,
   lines,
   onChanged,
+  onToast,
 }: {
   account: Account | undefined;
   lines: StatementLine[];
   onChanged: () => void;
+  onToast: (message: string, kind?: "success" | "error") => void;
 }) {
   const [reversingId, setReversingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleReverse(transactionId: string) {
+  async function handleReverse(transactionId: string, description: string) {
     setError(null);
     setReversingId(transactionId);
     try {
       await api.reverseTransaction(transactionId, "Reversed from dashboard");
       onChanged();
+      onToast(`Reversed "${description}"`);
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Reverse failed.");
+      const message = err instanceof ApiRequestError ? err.message : "Reverse failed.";
+      setError(message);
+      onToast(message, "error");
     } finally {
       setReversingId(null);
     }
@@ -38,9 +45,14 @@ export function StatementPanel({
     );
   }
 
+  const trend = [...lines].reverse().map((l) => BigInt(l.runningBalanceMinor));
+
   return (
     <div className="panel">
-      <h2>Statement — {account.name}</h2>
+      <div className="statement-header">
+        <h2>Statement — {account.name}</h2>
+        <Sparkline values={trend} />
+      </div>
       {error && <div className="form-error">{error}</div>}
       <table className="statement-table">
         <thead>
@@ -66,7 +78,14 @@ export function StatementPanel({
             return (
               <tr key={line.entryId}>
                 <td className="muted">{new Date(line.createdAt).toLocaleString()}</td>
-                <td>{line.description}</td>
+                <td>
+                  {line.description}
+                  {isLargeAmount(line.amountMinor) && (
+                    <span className="flag-badge" title="Above the demo large-transaction threshold of $1,000">
+                      Large
+                    </span>
+                  )}
+                </td>
                 <td>
                   <span className={`direction-badge ${line.direction.toLowerCase()}`}>{line.direction}</span>
                 </td>
@@ -79,7 +98,7 @@ export function StatementPanel({
                   <button
                     className="link-button"
                     disabled={reversingId === line.transactionId}
-                    onClick={() => handleReverse(line.transactionId)}
+                    onClick={() => handleReverse(line.transactionId, line.description)}
                     title="Post an offsetting reversal transaction"
                   >
                     {reversingId === line.transactionId ? "…" : "Reverse"}

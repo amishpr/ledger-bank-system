@@ -4,7 +4,13 @@ import type { Account } from "../api/types";
 
 const TYPES: Account["type"][] = ["ASSET", "LIABILITY", "EQUITY", "REVENUE", "EXPENSE"];
 
-export function NewAccountForm({ onCreated }: { onCreated: () => void }) {
+export function NewAccountForm({
+  onCreated,
+  onToast,
+}: {
+  onCreated: () => void;
+  onToast: (message: string, kind?: "success" | "error") => void;
+}) {
   const [name, setName] = useState("");
   const [type, setType] = useState<Account["type"]>("ASSET");
   const [error, setError] = useState<string | null>(null);
@@ -17,10 +23,13 @@ export function NewAccountForm({ onCreated }: { onCreated: () => void }) {
     setSubmitting(true);
     try {
       await api.createAccount({ name: name.trim(), type });
+      onToast(`Created account "${name.trim()}"`);
       setName("");
       onCreated();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.message : "Could not create account.");
+      const message = err instanceof ApiRequestError ? err.message : "Could not create account.";
+      setError(message);
+      onToast(message, "error");
     } finally {
       setSubmitting(false);
     }

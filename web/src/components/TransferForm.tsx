@@ -1,9 +1,18 @@
 import { useState } from "react";
 import { api, ApiRequestError } from "../api/client";
 import type { Account } from "../api/types";
-import { parseDollarsToCents } from "../money";
+import { isLargeAmount } from "../flags";
+import { formatMoney, parseDollarsToCents } from "../money";
 
-export function TransferForm({ accounts, onPosted }: { accounts: Account[]; onPosted: () => void }) {
+export function TransferForm({
+  accounts,
+  onPosted,
+  onToast,
+}: {
+  accounts: Account[];
+  onPosted: () => void;
+  onToast: (message: string, kind?: "success" | "error") => void;
+}) {
   const spendable = accounts.filter((a) => a.type === "ASSET");
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
@@ -14,6 +23,13 @@ export function TransferForm({ accounts, onPosted }: { accounts: Account[]; onPo
 
   const from = spendable.find((a) => a.id === fromId) ?? spendable[0];
   const to = spendable.find((a) => a.id === toId) ?? spendable[1];
+
+  let previewCents: bigint | null = null;
+  try {
+    previewCents = amount.trim() ? parseDollarsToCents(amount) : null;
+  } catch {
+    previewCents = null;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -50,17 +66,21 @@ export function TransferForm({ accounts, onPosted }: { accounts: Account[]; onPo
           { accountId: to.id, direction: "DEBIT", amountMinor: amountMinor.toString() },
         ],
       });
+      onToast(`Sent ${formatMoney(amountMinor)} from ${from.name} to ${to.name}`);
       setAmount("");
       setDescription("");
       onPosted();
     } catch (err) {
+      let message: string;
       if (err instanceof ApiRequestError && err.code === "INSUFFICIENT_FUNDS") {
-        setError(`${from.name} doesn't have enough balance to cover that transfer.`);
+        message = `${from.name} doesn't have enough balance to cover that transfer.`;
       } else if (err instanceof ApiRequestError) {
-        setError(err.message);
+        message = err.message;
       } else {
-        setError("Transfer failed. Is the server running?");
+        message = "Transfer failed. Is the server running?";
       }
+      setError(message);
+      onToast(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -112,6 +132,9 @@ export function TransferForm({ accounts, onPosted }: { accounts: Account[]; onPo
         </label>
       </div>
       {error && <div className="form-error">{error}</div>}
+      {!error && previewCents !== null && isLargeAmount(previewCents) && (
+        <div className="form-notice">This is a large transfer and will be flagged for review in the feed.</div>
+      )}
       <button type="submit" disabled={submitting || spendable.length < 2}>
         {submitting ? "Posting…" : "Post transfer"}
       </button>

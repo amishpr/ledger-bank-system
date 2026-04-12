@@ -1,4 +1,5 @@
 import type { LedgerEvent } from "../api/types";
+import { isLargeAmount } from "../flags";
 import { formatMoney } from "../money";
 
 export function ActivityFeed({ events }: { events: LedgerEvent[] }) {
@@ -17,7 +18,14 @@ export function ActivityFeed({ events }: { events: LedgerEvent[] }) {
               <span className={`activity-tag ${event.type === "transaction.reversed" ? "reversed" : "posted"}`}>
                 {event.type === "transaction.reversed" ? "Reversal" : "Posted"}
               </span>
-              <span className="activity-description">{event.transaction.description}</span>
+              <span className="activity-description">
+                {event.transaction.description}
+                {isLargeAmount(total) && (
+                  <span className="flag-badge" title="Above the demo large-transaction threshold of $1,000">
+                    Large
+                  </span>
+                )}
+              </span>
               <span className="activity-amount">{formatMoney(total)}</span>
             </li>
           );
