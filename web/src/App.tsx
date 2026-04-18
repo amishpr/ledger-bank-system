@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import { api } from "./api/client";
-import type { Account, LedgerEvent, StatementLine } from "./api/types";
+import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, StatementLine } from "./api/types";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { NewAccountForm } from "./components/NewAccountForm";
+import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
+import { SpendingChart } from "./components/SpendingChart";
 import { StatementPanel } from "./components/StatementPanel";
 import { StatsBar } from "./components/StatsBar";
 import { ThemeToggle } from "./components/ThemeToggle";
@@ -16,6 +18,7 @@ import { useToasts } from "./useToasts";
 
 const MAX_FEED_EVENTS = 20;
 const PULSE_DURATION_MS = 900;
+const EMPTY_BREAKDOWN: SpendingBreakdown = { byCategory: [], byMonth: [] };
 
 function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -24,6 +27,8 @@ function App() {
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pulsingAccountIds, setPulsingAccountIds] = useState<Set<string>>(new Set());
+  const [recurringTransfers, setRecurringTransfers] = useState<RecurringTransfer[]>([]);
+  const [spendingBreakdown, setSpendingBreakdown] = useState<SpendingBreakdown>(EMPTY_BREAKDOWN);
 
   const refreshAccounts = useCallback(async () => {
     try {
@@ -41,19 +46,39 @@ function App() {
     setStatement(lines);
   }, []);
 
+  const refreshRecurring = useCallback(async () => {
+    setRecurringTransfers(await api.listRecurringTransfers());
+  }, []);
+
+  const refreshSpending = useCallback(async () => {
+    setSpendingBreakdown(await api.getSpendingBreakdown());
+  }, []);
+
   useEffect(() => {
     refreshAccounts();
-  }, [refreshAccounts]);
+    refreshRecurring();
+    refreshSpending();
+  }, [refreshAccounts, refreshRecurring, refreshSpending]);
 
   useEffect(() => {
     if (selectedAccountId) refreshStatement(selectedAccountId);
   }, [selectedAccountId, refreshStatement]);
 
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
+
   const handleLedgerEvent = useCallback(
     (event: LedgerEvent) => {
       if (event.type === "connected") return;
+
+      if (event.type === "recurring.failed") {
+        pushToast(`A recurring transfer failed: ${event.error}`, "error");
+        refreshRecurring();
+        return;
+      }
+
       setEvents((prev) => [event, ...prev].slice(0, MAX_FEED_EVENTS));
       refreshAccounts();
+      refreshSpending();
       if (selectedAccountId && event.affectedAccountIds.includes(selectedAccountId)) {
         refreshStatement(selectedAccountId);
       }
@@ -65,16 +90,21 @@ function App() {
           return next;
         });
       }, PULSE_DURATION_MS);
+
+      if (event.type === "recurring.executed") {
+        pushToast(`Recurring transfer ran: "${event.transaction.description}"`);
+        refreshRecurring();
+      }
     },
-    [refreshAccounts, refreshStatement, selectedAccountId],
+    [refreshAccounts, refreshRecurring, refreshSpending, refreshStatement, selectedAccountId, pushToast],
   );
 
   const wsStatus = useLedgerSocket(handleLedgerEvent);
   const { theme, toggleTheme } = useTheme();
-  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts();
 
   function handlePosted() {
     refreshAccounts();
+    refreshSpending();
     if (selectedAccountId) refreshStatement(selectedAccountId);
   }
 
@@ -113,9 +143,16 @@ function App() {
           />
           <NewAccountForm onCreated={refreshAccounts} onToast={pushToast} />
           <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
+          <RecurringTransfersPanel
+            recurringTransfers={recurringTransfers}
+            accounts={accounts}
+            onChanged={refreshRecurring}
+            onToast={pushToast}
+          />
         </div>
         <div className="col wide">
           <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
+          <SpendingChart breakdown={spendingBreakdown} />
           <ActivityFeed events={events} />
         </div>
       </main>

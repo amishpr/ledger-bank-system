@@ -1,4 +1,12 @@
-import type { Account, ApiError, PostResult, StatementLine } from "./types";
+import type {
+  Account,
+  ApiError,
+  PostResult,
+  RecurrenceInterval,
+  RecurringTransfer,
+  SpendingBreakdown,
+  StatementLine,
+} from "./types";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
@@ -21,7 +29,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = (await res.json().catch(() => null)) as ApiError | null;
     throw new ApiRequestError(body?.error ?? "UNKNOWN_ERROR", body?.message ?? `Request failed (${res.status})`);
   }
+  if (res.status === 204) {
+    return undefined as T;
+  }
   return res.json() as Promise<T>;
+}
+
+export function statementExportUrl(accountId: string): string {
+  return `${API_URL}/accounts/${accountId}/statement/export`;
 }
 
 export const api = {
@@ -41,4 +56,22 @@ export const api = {
 
   reverseTransaction: (transactionId: string, note?: string) =>
     request<PostResult>(`/transactions/${transactionId}/reverse`, { method: "POST", body: JSON.stringify({ note }) }),
+
+  listRecurringTransfers: () => request<RecurringTransfer[]>("/recurring-transfers"),
+
+  createRecurringTransfer: (input: {
+    description: string;
+    fromAccountId: string;
+    toAccountId: string;
+    amountMinor: string;
+    interval: RecurrenceInterval;
+  }) => request<RecurringTransfer>("/recurring-transfers", { method: "POST", body: JSON.stringify(input) }),
+
+  toggleRecurringTransfer: (id: string) =>
+    request<RecurringTransfer>(`/recurring-transfers/${id}/toggle-active`, { method: "POST" }),
+
+  deleteRecurringTransfer: (id: string) =>
+    request<void>(`/recurring-transfers/${id}`, { method: "DELETE" }),
+
+  getSpendingBreakdown: () => request<SpendingBreakdown>("/insights/spending"),
 };

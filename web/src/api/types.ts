@@ -54,4 +54,41 @@ export interface ApiError {
 export type LedgerEvent =
   | { type: "connected" }
   | { type: "transaction.posted"; transaction: Transaction; affectedAccountIds: string[] }
-  | { type: "transaction.reversed"; transaction: Transaction; affectedAccountIds: string[] };
+  | { type: "transaction.reversed"; transaction: Transaction; affectedAccountIds: string[] }
+  | { type: "recurring.executed"; recurringTransferId: string; transaction: Transaction; affectedAccountIds: string[] }
+  | { type: "recurring.failed"; recurringTransferId: string; error: string };
+
+export type RecurrenceInterval = "EVERY_MINUTE" | "DAILY" | "WEEKLY" | "MONTHLY";
+
+export interface RecurringTransfer {
+  id: string;
+  description: string;
+  fromAccountId: string;
+  fromAccount: Account;
+  toAccountId: string;
+  toAccount: Account;
+  amountMinor: string;
+  interval: RecurrenceInterval;
+  active: boolean;
+  nextRunAt: string;
+  lastRunAt: string | null;
+  lastRunStatus: "SUCCESS" | "FAILED" | null;
+  lastRunError: string | null;
+  createdAt: string;
+}
+
+export interface SpendingByCategory {
+  accountId: string;
+  accountName: string;
+  totalMinor: string;
+}
+
+export interface SpendingByMonth {
+  month: string;
+  totalMinor: string;
+}
+
+export interface SpendingBreakdown {
+  byCategory: SpendingByCategory[];
+  byMonth: SpendingByMonth[];
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, ApiRequestError } from "../api/client";
+import { api, ApiRequestError, statementExportUrl } from "../api/client";
 import type { Account, StatementLine } from "../api/types";
 import { isLargeAmount } from "../flags";
 import { entryIncreasesBalance } from "../ledgerMath";
@@ -51,7 +51,12 @@ export function StatementPanel({
     <div className="panel">
       <div className="statement-header">
         <h2>Statement — {account.name}</h2>
-        <Sparkline values={trend} />
+        <div className="statement-header-right">
+          <Sparkline values={trend} />
+          <a className="export-link" href={statementExportUrl(account.id)} download>
+            Export CSV
+          </a>
+        </div>
       </div>
       {error && <div className="form-error">{error}</div>}
       <table className="statement-table">

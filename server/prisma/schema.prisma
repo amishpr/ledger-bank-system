@@ -42,6 +42,9 @@ model Account {
   createdAt DateTime    @default(now())
   entries   Entry[]
 
+  recurringTransfersFrom RecurringTransfer[] @relation("RecurringFrom")
+  recurringTransfersTo   RecurringTransfer[] @relation("RecurringTo")
+
   @@index([type])
 }
 
@@ -92,4 +95,37 @@ model AuditLog {
   createdAt     DateTime     @default(now())
 
   @@index([entityType, entityId])
+}
+
+enum RecurrenceInterval {
+  EVERY_MINUTE
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// A standing instruction to post the same transfer on a schedule. The
+// scheduler (see src/scheduler.ts) posts through the exact same
+// postTransaction path a manual transfer uses, so every invariant that
+// applies to a manual transfer (balance check, overdraft protection)
+// applies here too. Each scheduled occurrence gets its own idempotency
+// key derived from this row's id and the run's due time, so a scheduler
+// restart or an overlapping sweep can never post the same occurrence twice.
+model RecurringTransfer {
+  id            String             @id @default(cuid())
+  description   String
+  fromAccountId String
+  fromAccount   Account            @relation("RecurringFrom", fields: [fromAccountId], references: [id])
+  toAccountId   String
+  toAccount     Account            @relation("RecurringTo", fields: [toAccountId], references: [id])
+  amountMinor   BigInt
+  interval      RecurrenceInterval
+  active        Boolean            @default(true)
+  nextRunAt     DateTime
+  lastRunAt     DateTime?
+  lastRunStatus String?
+  lastRunError  String?
+  createdAt     DateTime           @default(now())
+
+  @@index([active, nextRunAt])
 }

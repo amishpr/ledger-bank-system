@@ -71,9 +71,51 @@ one that made the request, picks up that message and refetches the
 affected account balances and statement, which is why the balance on
 screen updates without anyone refreshing the page.
 
+## How the recurring transfer scheduler works
+
+This is the part of the project that shows you can reason about a
+background job instead of only a request and response, so it is worth
+having a clean trace ready for it too.
+
+A recurring transfer is created through a form much like the regular
+transfer form, except it also asks how often to repeat: every minute (a
+demo only option, so you can actually watch it work without waiting a
+week), daily, weekly, or monthly. Creating one does not move any money by
+itself. It just writes a row that says which accounts, how much, how
+often, and when it is next due, with that due time defaulting to right
+now so a freshly created one fires almost immediately.
+
+Inside the same server process, a single `setInterval` wakes up every
+fifteen seconds (configurable) and asks the database for every recurring
+transfer that is active and due. For each one it finds, it builds an
+idempotency key out of the recurring transfer's id and its exact due time,
+for example `recurring:abc123:2026-01-01T00:00:00.000Z`, and posts a
+transfer with that key through the exact same `postTransaction` function a
+manual transfer uses. That one detail is what makes the whole thing safe.
+If the sweep somehow ran twice for the same due time, or if the server
+crashed after posting but before it recorded that it had, the second
+attempt would compute the identical idempotency key and get back the
+already-posted transaction instead of posting a second one. The schedule
+does not have to be perfectly reliable for the money to be handled
+correctly, because the same guarantee that protects a retried manual
+transfer protects a retried scheduled one for free.
+
+After a successful post, the job advances the row's next due time forward
+by one interval from the time it was due, not from whatever time it
+happened to actually run, so a slightly late sweep does not drift the
+schedule. If the post fails, most often because the account does not have
+enough money, the job records the failure and still advances the next due
+time rather than retrying the same failure every fifteen seconds forever.
+It gets another chance on its next scheduled occurrence. Either way, the
+server broadcasts the result over the same WebSocket the manual transfer
+flow uses, so a scheduled transfer shows up in the live activity feed and
+updates account balances on screen exactly like a manual one would,
+without anyone needing to refresh or even know a background job exists.
+
 ## The data model, explained plainly
 
-There are four tables: Account, Transaction, Entry, and AuditLog.
+There are five tables: Account, Transaction, Entry, RecurringTransfer, and
+AuditLog.
 
 An Account has a type, which is one of asset, liability, equity, revenue,
 or expense. This is standard accounting terminology and it matters because
@@ -96,6 +138,14 @@ accounts always produces exactly two entries, a debit on one side and a
 credit on the other, for the same amount. This is what "double entry"
 means, every movement of money touches at least two accounts and the
 total debits always equal the total credits.
+
+A RecurringTransfer is not part of the ledger's own history. It never has
+entries of its own. It only holds instructions: which two accounts, how
+much, how often, and when it is next due. The background job reads these
+rows, and when one is due, posts a real transaction through the same
+function a manual transfer uses. If you deleted every RecurringTransfer
+row tomorrow, the ledger's history would not change at all, since nothing
+about a past transaction depends on the schedule that caused it.
 
 An AuditLog row gets written any time an account is created or a
 transaction is posted or reversed. It exists separately from the entries
@@ -165,6 +215,44 @@ This is a good thing to be upfront about if asked, since pretending a demo
 project handles every production concern is less convincing than
 explaining exactly where the line was drawn and why.
 
+**The scheduler is one in-process interval, not a job queue, and that
+limit is written down rather than hidden.** A production system handling
+real scheduled payments would use something like BullMQ with Redis, or a
+managed cron service, especially the moment you run more than one copy of
+the server. Two copies of this project's simple scheduler would both sweep
+for due transfers at the same moment. The idempotency key means they could
+not both succeed in posting the same occurrence twice, but that is a safety
+net, not a design for the problem. A real production setup would want one
+clear owner of the schedule, through a database lock or an actual queue,
+instead of relying on every instance racing safely. Building the simple
+version first and being able to explain exactly where it stops being
+enough is a more convincing signal than pretending a fifteen line
+`setInterval` is production infrastructure.
+
+**Monthly and weekly intervals use calendar math, not a fixed number of
+minutes.** A tempting shortcut is to say "monthly equals 43,200 minutes"
+and add that fixed number each time. That drifts. Months are not all the
+same length, so a transfer scheduled for the 31st would slide earlier and
+earlier over the year. Instead, the next run date is computed by asking
+JavaScript's own `Date` object to add one to the month field directly,
+which correctly rolls January 31st into early March rather than landing
+in a nonexistent February 31st. This is a small detail, but it is the
+kind of correctness question that separates code that happens to work in
+a demo from code that would misbehave the first time someone scheduled a
+payment on the 31st.
+
+**The spending chart and the CSV export were both built without adding a
+new dependency.** Neither a charting library nor a CSV library was pulled
+in. The chart is plain HTML bars sized by percentage inside a fixed track,
+using one categorical color per expense category from a small validated
+palette, and one consistent color for the single series in the by-month
+view. The CSV is a small function that escapes commas, quotes, and
+newlines by hand and joins rows with the standard CRLF line ending. Both
+are simple enough that a dependency would have cost more in bundle size
+and unfamiliar API surface than it saved in code written. That is a
+judgment call, not a rule, and a real production dashboard with a dozen
+chart types would reasonably reach for a charting library instead.
+
 ## Why each library was chosen
 
 **Express** for the API framework, mainly because it is the tool most
@@ -217,21 +305,35 @@ called or what type it is.
 ## What the tests actually prove
 
 The test suite is intentionally small and aimed directly at the rules that
-matter, rather than testing every route for its own sake. There are six
-tests. One confirms an unbalanced transaction gets rejected. One confirms
-that trying to overdraw an asset account gets rejected without changing
-its balance. One confirms that posting the same request twice with the
-same idempotency key returns the original transaction instead of creating
-a second one. One confirms that reusing a key with a different request
-body is treated as a conflict. And two cover reversal, confirming that
-reversing a transaction restores the account to its exact prior balance
-and marks the original as voided, and that trying to reverse something
-already voided is rejected.
+matter, rather than testing every route for its own sake. There are
+thirteen tests across two files. Six of them are described above, covering
+the core ledger: an unbalanced transaction gets rejected, an overdraw
+attempt gets rejected without changing the balance, a repeated idempotency
+key returns the original result instead of posting twice, a reused key
+with a different body is a conflict, and a reversal restores the exact
+prior balance and voids the original.
 
-If asked why there are not more tests, a fair answer is that these six
-cover every invariant the system promises. Adding tests for things like
-"can you create an account" would mostly be testing Prisma and Express,
-not this project's own logic.
+The other seven cover the recurring transfer scheduler, and they are worth
+knowing well because they test a background job without ever waiting on a
+real timer. The sweep function, `runDueRecurringTransfers`, takes the
+current time as a plain argument instead of always reading the system
+clock, so a test can hand it any moment it wants and get a deterministic
+result. One test hands it a due transfer and confirms it posts and the
+next due date moves forward correctly. One test calls the sweep twice for
+the exact same due time, simulating two overlapping sweeps or a crash
+between posting and recording that it posted, and confirms only one
+transaction was actually created. One test points a recurring transfer at
+an account with no money and confirms the occurrence is recorded as
+failed without crashing the sweep or retrying forever. One test confirms
+a paused recurring transfer is skipped entirely. Two more confirm the
+calendar math directly: adding a month to January 31st lands in March,
+not February, and adding a week lands exactly seven days later.
+
+If asked why there are not more tests, a fair answer is that these
+thirteen cover every invariant the system promises, for both the ledger
+and the scheduler. Adding tests for things like "can you create an
+account" would mostly be testing Prisma and Express, not this project's
+own logic.
 
 There was also a manual verification pass done with a headless browser,
 actually driving the React form, watching a live balance update over the
@@ -319,6 +421,47 @@ The project's purpose was to demonstrate the ledger's own correctness, not
 to build a full product. Authentication is a well understood, separate
 concern that would not change anything about how the accounting invariants
 work, so it was left out to keep the project focused.
+
+**How does the recurring transfer scheduler avoid posting the same
+transfer twice?**
+Every scheduled occurrence gets its own idempotency key built from the
+recurring transfer's id and its exact due timestamp. The sweep posts
+through the same function a manual transfer uses, which already checks
+that key before writing anything. So even if the sweep runs twice for the
+same due time, or the process restarts between posting the transaction
+and recording that it had, the second attempt recognizes the key and
+returns the original result instead of posting again. The scheduling part
+does not have to be perfectly reliable, because the posting part already
+is.
+
+**How would you run that scheduler if you had multiple servers?**
+As written, it would not be safe to just run more than one copy, since
+every copy would sweep for due transfers at the same moment. The
+idempotency key stops them from double-posting the same occurrence, but
+that is a safety net, not a real design. The honest fix is to give the
+schedule one clear owner, either a distributed lock so only one instance
+sweeps at a time, or moving the whole thing to a real job queue like
+BullMQ, which is built to hand each job to exactly one worker.
+
+**Why did you build the chart yourself instead of using a charting
+library?**
+The dashboard needed exactly two small bar charts, and plain HTML divs
+sized by percentage were enough to build them correctly, including a
+category color scheme picked from a small palette validated for
+colorblind-safe contrast. A charting library would have added a real
+amount of bundle size and a new API to learn for something this simple.
+That tradeoff flips for a dashboard with many chart types, and it is worth
+saying that out loud rather than implying every chart should always be
+hand rolled.
+
+**Why does the CSV export return a file from the server instead of
+building it in the browser?**
+The browser already has the statement data it needs to show the table, so
+building the CSV client side would have worked too. The server does it
+instead so the export is not limited to whatever page of results the
+browser happened to have loaded, and so the download gets a real
+`Content-Disposition` header and filename, which is what makes a browser
+treat it as a file to save instead of text to navigate to.
 
 ## A short glossary, in case it helps
 

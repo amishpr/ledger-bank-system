@@ -16,9 +16,12 @@ You can create accounts (checking, savings, equity, revenue, expense), move
 money between them with a transfer form, watch balances update live in a
 second browser tab without refreshing, look at a running statement for any
 account, and reverse a past transaction to see how a correction is handled
-without touching the original record. Under the hood, every one of those
-actions goes through the same core function that checks the accounting math
-before anything is written to the database.
+without touching the original record. You can also schedule a transfer to
+repeat on its own, download an account's statement as a CSV file, and see
+a chart of where money has been going by category and by month. Under the
+hood, every money movement, whether typed into the transfer form or posted
+automatically by the scheduler, goes through the same core function that
+checks the accounting math before anything is written to the database.
 
 ## Features
 
@@ -29,10 +32,18 @@ before anything is written to the database.
   request after a timeout never creates a duplicate transfer
 - Overdraft protection on checking and savings style accounts
 - Reversals instead of edits or deletes, so the ledger stays a true history
+- Recurring transfers posted by a background job on the server, on a
+  schedule you pick, with the same idempotency guarantee protecting each
+  occurrence
+- A spending breakdown chart, by category and by month, built from the
+  same entries the ledger already records
+- CSV export of any account's full statement
 - Live updates over WebSockets, so every connected browser tab sees new
-  activity the moment it is posted
+  activity the moment it is posted, including transfers the scheduler
+  posts on its own
 - A REST API with input validation and clear error codes
-- An automated test suite covering the accounting rules directly
+- An automated test suite covering the accounting rules and the scheduler
+  directly
 
 ## Tech stack
 
@@ -53,19 +64,20 @@ detail in [WALKTHROUGH.md](WALKTHROUGH.md).
 ledger-app/
 ├─ server/                    Express API
 │  ├─ prisma/
-│  │  ├─ schema.prisma        Account, Transaction, Entry, AuditLog models
+│  │  ├─ schema.prisma        Account, Transaction, Entry, RecurringTransfer, AuditLog
 │  │  ├─ migrations/          SQL migration history
 │  │  └─ seed.ts              Creates demo accounts and sample activity
 │  ├─ src/
-│  │  ├─ ledger/              Core accounting logic and its tests
+│  │  ├─ ledger/              Core accounting logic, recurring transfers, insights, and their tests
 │  │  ├─ api/                 Express routes and request validation
 │  │  ├─ realtime/            WebSocket broadcast
+│  │  ├─ scheduler.ts         Background job that posts due recurring transfers
 │  │  ├─ db.ts                Prisma client
 │  │  └─ index.ts             App entry point
 │  └─ package.json
 ├─ web/                       React dashboard
 │  ├─ src/
-│  │  ├─ components/          Accounts panel, transfer form, statement, feed
+│  │  ├─ components/          Accounts panel, transfer form, statement, recurring transfers, spending chart, feed
 │  │  ├─ api/                 Fetch client and shared types
 │  │  ├─ money.ts             Formatting and parsing for cent amounts
 │  │  ├─ ledgerMath.ts         Client side mirror of the balance direction rule
@@ -78,7 +90,7 @@ ledger-app/
 
 ## How the data model works
 
-There are four tables.
+There are five tables.
 
 **Account** has a name, a type (asset, liability, equity, revenue, or
 expense), and a currency. The type matters because it decides which
@@ -94,6 +106,12 @@ idempotency key.
 always two entries: a debit on one account and a credit on the other, for
 the same amount. A transaction can have more than two entries if it touches
 more than two accounts, as long as the debits and credits still add up.
+
+**RecurringTransfer** is a standing instruction to post the same transfer
+on a schedule (every minute for demo purposes, daily, weekly, or monthly).
+It does not touch the ledger itself. It only tells the background job in
+`scheduler.ts` what to post and when, and the job posts it through the
+exact same function a manual transfer uses.
 
 **AuditLog** records every account creation and every transaction posted or
 reversed, so there is a plain trail of what happened and when, separate
@@ -118,10 +136,24 @@ development is `http://localhost:4000`.
 | GET | `/accounts/:id/statement?limit=25` | Recent entries for an account with a running balance |
 | POST | `/transactions` | Post a transaction. Body: `description`, `entries` (array of `accountId`, `direction`, `amountMinor`), optional `idempotencyKey` |
 | POST | `/transactions/:id/reverse` | Reverse a posted transaction. Body: optional `note` |
+| GET | `/accounts/:id/statement/export` | Download the account's full statement as a CSV file |
+| GET | `/recurring-transfers` | List every scheduled transfer |
+| POST | `/recurring-transfers` | Schedule one. Body: `description`, `fromAccountId`, `toAccountId`, `amountMinor`, `interval` (`EVERY_MINUTE`, `DAILY`, `WEEKLY`, or `MONTHLY`), optional `startAt` |
+| POST | `/recurring-transfers/:id/toggle-active` | Pause it if it is running, or resume it if it is paused |
+| DELETE | `/recurring-transfers/:id` | Cancel it. Transfers it already posted are not undone |
+| GET | `/insights/spending` | Total spending grouped by expense account and by month |
 
 A WebSocket server runs alongside the API at `ws://localhost:4000/ws` and
-broadcasts a message any time a transaction is posted or reversed, which is
-what lets the dashboard update without polling.
+broadcasts a message any time a transaction is posted or reversed, whether
+that happened from the transfer form or from the scheduler, which is what
+lets the dashboard update without polling.
+
+A background job inside the same server process checks every 15 seconds
+(configurable, see below) for any recurring transfer that is due, and
+posts it through the normal transaction path, invariants and all. If a
+scheduled transfer would overdraw its account, that occurrence is skipped
+and recorded as failed rather than retried forever, and it tries again on
+its next scheduled occurrence.
 
 Errors come back as JSON with an `error` code and a human readable
 `message`, for example `INSUFFICIENT_FUNDS`, `UNBALANCED_TRANSACTION`, or
@@ -176,9 +208,13 @@ npm run seed
 ```
 
 This creates a set of demo accounts belonging to two fictional people,
-funds them with opening balances, and posts a handful of sample
-transactions, including one reversal, so you can see what a corrected
-transaction looks like right away.
+funds them with opening balances, posts a handful of sample transactions
+across a few expense categories (so the spending chart has something to
+show), includes one reversal so you can see what a corrected transaction
+looks like right away, and schedules one recurring transfer that is
+already due. That last one means if you start the app right after
+seeding, you can watch the background job post its first occurrence
+within its first sweep, instead of having to wait and take it on faith.
 
 ## Running the app
 
@@ -245,6 +281,7 @@ datasource configuration.
 | `DATABASE_URL` | `file:./dev.db` | Where Prisma connects. Point this at Postgres for production |
 | `PORT` | `4000` | Port the API and WebSocket server listen on |
 | `CORS_ORIGIN` | `http://localhost:5173` | The single origin allowed to call the API from a browser |
+| `SCHEDULER_INTERVAL_MS` | `15000` | How often the background job checks for due recurring transfers |
 
 **web/.env**
 
@@ -274,6 +311,16 @@ and would not be fine at the scale of a real bank account with years of
 history. A production version of this would keep a running balance that
 updates as entries are written, instead of recalculating it from scratch
 on every request.
+
+The scheduler is a single `setInterval` inside the same process as the
+API, not a separate worker or job queue. That is fine as long as only one
+copy of the server is running, which is true here. It would not be fine
+the moment you run two copies of the server for reliability, since both
+would sweep for due transfers at the same time. The idempotency key on
+each occurrence means they could not both post it twice, but a real
+production setup would still want one clear owner of the schedule, using
+something like a database lock or a proper job queue, rather than relying
+on every instance racing safely.
 
 More detail on these decisions, along with the reasoning behind the rest
 of the project, is in [WALKTHROUGH.md](WALKTHROUGH.md).

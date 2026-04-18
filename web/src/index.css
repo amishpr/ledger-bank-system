@@ -26,6 +26,16 @@
   --type-revenue: #12805c;
   --type-expense: #b3261e;
 
+  /* Categorical chart palette, fixed order, validated for colorblind and
+     normal-vision separation on both surfaces. Used
+     for the spending-by-category chart; assign in this order, never cycle
+     past 5 without folding extra categories into "Other". */
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Consolas, monospace;
 
@@ -63,6 +73,12 @@
   --type-equity: #c397ec;
   --type-revenue: #3ecf8e;
   --type-expense: #ff8079;
+
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
 }
 
 * {

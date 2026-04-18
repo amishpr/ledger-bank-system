@@ -2,21 +2,30 @@ import type { LedgerEvent } from "../api/types";
 import { isLargeAmount } from "../flags";
 import { formatMoney } from "../money";
 
+const TAG_LABEL: Record<string, string> = {
+  "transaction.posted": "Posted",
+  "transaction.reversed": "Reversal",
+  "recurring.executed": "Auto",
+};
+
 export function ActivityFeed({ events }: { events: LedgerEvent[] }) {
+  const renderable = events.filter(
+    (e) => e.type === "transaction.posted" || e.type === "transaction.reversed" || e.type === "recurring.executed",
+  );
+
   return (
     <div className="panel">
       <h2>Live activity</h2>
-      {events.length === 0 && <p className="hint">Transactions posted anywhere will appear here in real time.</p>}
+      {renderable.length === 0 && <p className="hint">Transactions posted anywhere will appear here in real time.</p>}
       <ul className="activity-feed">
-        {events.map((event) => {
-          if (event.type !== "transaction.posted" && event.type !== "transaction.reversed") return null;
+        {renderable.map((event) => {
           const total = event.transaction.entries
             .filter((e) => e.direction === "DEBIT")
             .reduce((sum, e) => sum + BigInt(e.amountMinor), 0n);
           return (
             <li key={event.transaction.id + event.type} className="activity-item">
-              <span className={`activity-tag ${event.type === "transaction.reversed" ? "reversed" : "posted"}`}>
-                {event.type === "transaction.reversed" ? "Reversal" : "Posted"}
+              <span className={`activity-tag ${event.type === "transaction.reversed" ? "reversed" : event.type === "recurring.executed" ? "auto" : "posted"}`}>
+                {TAG_LABEL[event.type]}
               </span>
               <span className="activity-description">
                 {event.transaction.description}

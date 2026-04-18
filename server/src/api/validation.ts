@@ -32,3 +32,12 @@ export const createAccountSchema = z.object({
 export const reverseTransactionSchema = z.object({
   note: z.string().min(1).max(280).optional(),
 });
+
+export const createRecurringTransferSchema = z.object({
+  description: z.string().min(1).max(280),
+  fromAccountId: z.string().min(1),
+  toAccountId: z.string().min(1),
+  amountMinor: amountMinorSchema,
+  interval: z.enum(["EVERY_MINUTE", "DAILY", "WEEKLY", "MONTHLY"]),
+  startAt: z.string().datetime().optional(),
+});

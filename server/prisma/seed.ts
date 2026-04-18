@@ -1,9 +1,11 @@
 import { prisma } from "../src/db.js";
 import { createAccount, postTransaction } from "../src/ledger/ledgerService.js";
+import { createRecurringTransfer } from "../src/ledger/recurringService.js";
 
 async function main() {
   console.log("Resetting database...");
   await prisma.auditLog.deleteMany();
+  await prisma.recurringTransfer.deleteMany();
   await prisma.entry.deleteMany();
   await prisma.transaction.deleteMany();
   await prisma.account.deleteMany();
@@ -15,6 +17,8 @@ async function main() {
   const jordanChecking = await createAccount({ name: "Checking - Jordan", type: "ASSET" });
   const interestRevenue = await createAccount({ name: "Revenue - Interest", type: "REVENUE" });
   const feesExpense = await createAccount({ name: "Expenses - Bank Fees", type: "EXPENSE" });
+  const diningExpense = await createAccount({ name: "Expenses - Dining", type: "EXPENSE" });
+  const subscriptionsExpense = await createAccount({ name: "Expenses - Subscriptions", type: "EXPENSE" });
 
   console.log("Funding accounts via opening balances...");
   // Opening balances are posted as real double-entry transactions against an
@@ -63,10 +67,43 @@ async function main() {
       { accountId: interestRevenue.id, direction: "CREDIT", amountMinor: 1_234n },
     ],
   });
+  await postTransaction({
+    description: "Dinner with friends",
+    entries: [
+      { accountId: diningExpense.id, direction: "DEBIT", amountMinor: 6_420n },
+      { accountId: alexChecking.id, direction: "CREDIT", amountMinor: 6_420n },
+    ],
+  });
+  await postTransaction({
+    description: "Coffee shop",
+    entries: [
+      { accountId: diningExpense.id, direction: "DEBIT", amountMinor: 875n },
+      { accountId: alexChecking.id, direction: "CREDIT", amountMinor: 875n },
+    ],
+  });
+  await postTransaction({
+    description: "Streaming subscription",
+    entries: [
+      { accountId: subscriptionsExpense.id, direction: "DEBIT", amountMinor: 1_599n },
+      { accountId: alexChecking.id, direction: "CREDIT", amountMinor: 1_599n },
+    ],
+  });
 
   console.log("Reversing a transaction to demonstrate append-only correction...");
   const { reverseTransaction } = await import("../src/ledger/ledgerService.js");
   await reverseTransaction(interestTx.transaction.id, "Correcting duplicate interest posting");
+
+  console.log("Scheduling a recurring transfer...");
+  // Starts due immediately, so the scheduler picks it up and posts the
+  // first occurrence within one sweep of the server starting up, which is
+  // the easiest way to actually watch the background job do something.
+  await createRecurringTransfer({
+    description: "Automatic savings sweep",
+    fromAccountId: alexChecking.id,
+    toAccountId: alexSavings.id,
+    amountMinor: 5_000n,
+    interval: "WEEKLY",
+  });
 
   console.log("Seed complete.");
 }
