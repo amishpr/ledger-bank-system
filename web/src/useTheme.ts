@@ -6,14 +6,16 @@ const STORAGE_KEY = "ledger-theme";
 function readStoredTheme(): Theme {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === "dark" ? "dark" : "light";
+    return stored === "light" ? "light" : "dark";
   } catch {
-    return "light";
+    return "dark";
   }
 }
 
-// Light is always the default and the app never follows the OS color
-// scheme automatically. Dark mode only ever turns on when picked here.
+// The dark OMS-terminal look is the default the app opens with, matching
+// the trading-desk software this dashboard is modeled after. Light stays
+// available through the toggle for anyone who wants it, but it's an
+// explicit choice, never the OS preference.
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(readStoredTheme);
 

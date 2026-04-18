@@ -1,9 +1,60 @@
 :root {
-  /* Deep indigo/navy as the single confident accent, cool slate neutrals,
-     and a soft blue-gray page background instead of flat white or gray.
-     This is a light-only palette by default: it never follows the OS
-     dark preference, so the dashboard doesn't surprise anyone with a
-     black background. Dark mode is opt-in only, via [data-theme="dark"]. */
+  /* OMS/EMS trading-terminal palette (FlexTrade/Bloomberg-style): near
+     black surface, high-contrast off-white text, vivid green/red for
+     up/down and buy/sell, amber reserved for warnings. This is now the
+     default - the light palette below is still available through the
+     theme toggle, but the terminal look is what the app opens with. */
+  --text: #a7b0c0;
+  --text-h: #eef1f6;
+  --bg: #0a0d12;
+  --panel-bg: #10141b;
+  --panel-bg-subtle: #0d1117;
+  --border: #232a37;
+  --accent: #2f8fef;
+  --accent-strong: #5aabff;
+  --accent-bg: rgba(47, 143, 239, 0.14);
+  --positive: #1fd67a;
+  --positive-bg: rgba(31, 214, 122, 0.12);
+  --negative: #ff4d4f;
+  --negative-bg: rgba(255, 77, 79, 0.13);
+  --warning: #f2b400;
+  --warning-bg: rgba(242, 180, 0, 0.13);
+  --muted: #626b7a;
+  --shadow: rgba(0, 0, 0, 0.5) 0 1px 2px, rgba(0, 0, 0, 0.35) 0 6px 16px;
+  --stripe: rgba(255, 255, 255, 0.02);
+
+  --type-asset: #2f8fef;
+  --type-liability: #f2b400;
+  --type-equity: #b98af5;
+  --type-revenue: #1fd67a;
+  --type-expense: #ff4d4f;
+
+  /* Categorical chart palette, fixed order, validated for colorblind and
+     normal-vision separation on both surfaces.
+     Used for the spending-by-category chart; assign in this order,
+     never cycle past 5 without folding extra categories into "Other". */
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
+
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  font: 13px/1.5 var(--sans);
+  color-scheme: dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root[data-theme="light"] {
+  /* The original light palette, kept behind the toggle for anyone who
+     wants it - the app just no longer opens on it by default. */
+  color-scheme: light;
   --text: #4a5268;
   --text-h: #101828;
   --bg: #f4f6fb;
@@ -17,8 +68,11 @@
   --positive-bg: rgba(18, 128, 92, 0.1);
   --negative: #b3261e;
   --negative-bg: rgba(179, 38, 30, 0.09);
+  --warning: #a45c0f;
+  --warning-bg: rgba(164, 92, 15, 0.1);
   --muted: #7a8299;
   --shadow: rgba(16, 24, 40, 0.04) 0 1px 2px, rgba(16, 24, 40, 0.06) 0 8px 24px;
+  --stripe: rgba(16, 24, 40, 0.015);
 
   --type-asset: #2947a3;
   --type-liability: #a45c0f;
@@ -26,59 +80,11 @@
   --type-revenue: #12805c;
   --type-expense: #b3261e;
 
-  /* Categorical chart palette, fixed order, validated for colorblind and
-     normal-vision separation on both surfaces. Used
-     for the spending-by-category chart; assign in this order, never cycle
-     past 5 without folding extra categories into "Other". */
   --cat-1: #2a78d6;
   --cat-2: #eb6834;
   --cat-3: #1baf7a;
   --cat-4: #eda100;
   --cat-5: #e87ba4;
-
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, "SF Mono", Consolas, monospace;
-
-  font: 15px/1.5 var(--sans);
-  color-scheme: light;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-}
-
-:root[data-theme="dark"] {
-  /* A deep navy dark mode, not black, only ever applied when chosen
-     explicitly with the theme toggle in the header. */
-  color-scheme: dark;
-  --text: #aeb6cc;
-  --text-h: #eef1f8;
-  --bg: #0f1729;
-  --panel-bg: #161f36;
-  --panel-bg-subtle: #131b30;
-  --border: #262f4a;
-  --accent: #6e8fef;
-  --accent-strong: #8ba4f2;
-  --accent-bg: rgba(110, 143, 239, 0.14);
-  --positive: #3ecf8e;
-  --positive-bg: rgba(62, 207, 142, 0.12);
-  --negative: #ff8079;
-  --negative-bg: rgba(255, 128, 121, 0.12);
-  --muted: #7581a1;
-  --shadow: rgba(2, 6, 20, 0.4) 0 1px 2px, rgba(2, 6, 20, 0.45) 0 8px 24px;
-
-  --type-asset: #8ba4f2;
-  --type-liability: #e0a458;
-  --type-equity: #c397ec;
-  --type-revenue: #3ecf8e;
-  --type-expense: #ff8079;
-
-  --cat-1: #3987e5;
-  --cat-2: #d95926;
-  --cat-3: #199e70;
-  --cat-4: #c98500;
-  --cat-5: #d55181;
 }
 
 * {

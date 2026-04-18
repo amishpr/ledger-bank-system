@@ -14,22 +14,20 @@ const TYPE_LABEL: Record<Account["type"], string> = {
 function AccountCard({
   account,
   selected,
-  pulsing,
+  pulse,
   onSelect,
 }: {
   account: Account;
   selected: boolean;
-  pulsing: boolean;
+  pulse: "up" | "down" | undefined;
   onSelect: () => void;
 }) {
   const animatedBalance = useAnimatedCents(BigInt(account.balanceMinor));
   const negative = animatedBalance < 0n;
+  const pulseClass = pulse ? ` pulse-${pulse}` : "";
 
   return (
-    <button
-      className={`account-card${selected ? " selected" : ""}${pulsing ? " pulse" : ""}`}
-      onClick={onSelect}
-    >
+    <button className={`account-card${selected ? " selected" : ""}${pulseClass}`} onClick={onSelect}>
       <div className="account-card-top">
         <span className="account-name">
           <AccountTypeIcon type={account.type} />
@@ -45,12 +43,12 @@ function AccountCard({
 export function AccountsPanel({
   accounts,
   selectedAccountId,
-  pulsingAccountIds,
+  pulsingAccounts,
   onSelect,
 }: {
   accounts: Account[];
   selectedAccountId: string | null;
-  pulsingAccountIds: Set<string>;
+  pulsingAccounts: Map<string, "up" | "down">;
   onSelect: (id: string) => void;
 }) {
   return (
@@ -62,7 +60,7 @@ export function AccountsPanel({
             key={account.id}
             account={account}
             selected={account.id === selectedAccountId}
-            pulsing={pulsingAccountIds.has(account.id)}
+            pulse={pulsingAccounts.get(account.id)}
             onSelect={() => onSelect(account.id)}
           />
         ))}

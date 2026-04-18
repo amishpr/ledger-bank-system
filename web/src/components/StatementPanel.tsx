@@ -92,7 +92,7 @@ export function StatementPanel({
                   )}
                 </td>
                 <td>
-                  <span className={`direction-badge ${line.direction.toLowerCase()}`}>{line.direction}</span>
+                  <span className={`direction-badge ${increase ? "increase" : "decrease"}`}>{line.direction}</span>
                 </td>
                 <td className={`num ${increase ? "positive" : "negative"}`}>
                   {increase ? "+" : "-"}
