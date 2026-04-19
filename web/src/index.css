@@ -1,33 +1,34 @@
 :root {
-  /* OMS/EMS trading-terminal palette (FlexTrade/Bloomberg-style): near
-     black surface, high-contrast off-white text, vivid green/red for
-     up/down and buy/sell, amber reserved for warnings. This is now the
-     default - the light palette below is still available through the
-     theme toggle, but the terminal look is what the app opens with. */
+  /* OMS/EMS trading-terminal layout (FlexTrade/Bloomberg-style density
+     and structure) with a brand palette on top: near black surface,
+     high-contrast off-white text, teal for up/increase, magenta for
+     down/decrease, amber reserved for warnings. This is now the default
+     - the light palette below is still available through the theme
+     toggle, but the terminal look is what the app opens with. */
   --text: #a7b0c0;
   --text-h: #eef1f6;
   --bg: #0a0d12;
   --panel-bg: #10141b;
   --panel-bg-subtle: #0d1117;
   --border: #232a37;
-  --accent: #2f8fef;
-  --accent-strong: #5aabff;
-  --accent-bg: rgba(47, 143, 239, 0.14);
-  --positive: #1fd67a;
-  --positive-bg: rgba(31, 214, 122, 0.12);
-  --negative: #ff4d4f;
-  --negative-bg: rgba(255, 77, 79, 0.13);
+  --accent: #6d6fff;
+  --accent-strong: #8f91ff;
+  --accent-bg: rgba(109, 111, 255, 0.16);
+  --positive: #19ceb3;
+  --positive-bg: rgba(25, 206, 179, 0.14);
+  --negative: #d62b70;
+  --negative-bg: rgba(214, 43, 112, 0.16);
   --warning: #f2b400;
   --warning-bg: rgba(242, 180, 0, 0.13);
   --muted: #626b7a;
   --shadow: rgba(0, 0, 0, 0.5) 0 1px 2px, rgba(0, 0, 0, 0.35) 0 6px 16px;
   --stripe: rgba(255, 255, 255, 0.02);
 
-  --type-asset: #2f8fef;
+  --type-asset: #6d6fff;
   --type-liability: #f2b400;
   --type-equity: #b98af5;
-  --type-revenue: #1fd67a;
-  --type-expense: #ff4d4f;
+  --type-revenue: #19ceb3;
+  --type-expense: #d62b70;
 
   /* Categorical chart palette, fixed order, validated for colorblind and
      normal-vision separation on both surfaces.
@@ -61,24 +62,24 @@
   --panel-bg: #ffffff;
   --panel-bg-subtle: #fafbfd;
   --border: #e1e5ee;
-  --accent: #2947a3;
-  --accent-strong: #1c3480;
-  --accent-bg: rgba(41, 71, 163, 0.08);
-  --positive: #12805c;
-  --positive-bg: rgba(18, 128, 92, 0.1);
-  --negative: #b3261e;
-  --negative-bg: rgba(179, 38, 30, 0.09);
+  --accent: #418af2;
+  --accent-strong: #2c6fcf;
+  --accent-bg: rgba(65, 138, 242, 0.1);
+  --positive: #0ae596;
+  --positive-bg: rgba(10, 229, 150, 0.12);
+  --negative: #e84275;
+  --negative-bg: rgba(232, 66, 117, 0.11);
   --warning: #a45c0f;
   --warning-bg: rgba(164, 92, 15, 0.1);
   --muted: #7a8299;
   --shadow: rgba(16, 24, 40, 0.04) 0 1px 2px, rgba(16, 24, 40, 0.06) 0 8px 24px;
   --stripe: rgba(16, 24, 40, 0.015);
 
-  --type-asset: #2947a3;
+  --type-asset: #418af2;
   --type-liability: #a45c0f;
   --type-equity: #6b3fa0;
-  --type-revenue: #12805c;
-  --type-expense: #b3261e;
+  --type-revenue: #0ae596;
+  --type-expense: #e84275;
 
   --cat-1: #2a78d6;
   --cat-2: #eb6834;
