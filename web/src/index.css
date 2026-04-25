@@ -1,16 +1,17 @@
 :root {
   /* OMS/EMS trading-terminal layout (FlexTrade/Bloomberg-style density
-     and structure) with a brand palette on top: near black surface,
-     high-contrast off-white text, teal for up/increase, magenta for
-     down/decrease, amber reserved for warnings. This is now the default
-     - the light palette below is still available through the theme
-     toggle, but the terminal look is what the app opens with. */
+     and structure) with a brand palette on top: a dark navy surface
+     (matching the supplied brand palette's dark theme background, not
+     flat black), high-contrast off-white text, teal for up/increase,
+     magenta for down/decrease, amber reserved for warnings. This is now
+     the default - the light palette below is still available through
+     the theme toggle, but the terminal look is what the app opens with. */
   --text: #a7b0c0;
   --text-h: #eef1f6;
-  --bg: #0a0d12;
-  --panel-bg: #10141b;
-  --panel-bg-subtle: #0d1117;
-  --border: #232a37;
+  --bg: #1a1f35;
+  --panel-bg: #242a47;
+  --panel-bg-subtle: #1e2440;
+  --border: #363c5e;
   --accent: #6d6fff;
   --accent-strong: #8f91ff;
   --accent-bg: rgba(109, 111, 255, 0.16);
