@@ -4,7 +4,6 @@ import type { Account, StatementLine } from "../api/types";
 import { isLargeAmount } from "../flags";
 import { entryIncreasesBalance } from "../ledgerMath";
 import { formatMoney } from "../money";
-import { Sparkline } from "./Sparkline";
 
 export function StatementPanel({
   account,
@@ -45,18 +44,13 @@ export function StatementPanel({
     );
   }
 
-  const trend = [...lines].reverse().map((l) => BigInt(l.runningBalanceMinor));
-
   return (
     <div className="panel">
       <div className="statement-header">
         <h2>Statement — {account.name}</h2>
-        <div className="statement-header-right">
-          <Sparkline values={trend} />
-          <a className="export-link" href={statementExportUrl(account.id)} download>
-            Export CSV
-          </a>
-        </div>
+        <a className="export-link" href={statementExportUrl(account.id)} download>
+          Export CSV
+        </a>
       </div>
       {error && <div className="form-error">{error}</div>}
       <table className="statement-table">

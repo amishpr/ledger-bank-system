@@ -4,6 +4,7 @@ import { api } from "./api/client";
 import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, StatementLine } from "./api/types";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
+import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
 import { NewAccountForm } from "./components/NewAccountForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { SpendingChart } from "./components/SpendingChart";
@@ -175,6 +176,7 @@ function App() {
         </div>
         <div className="col wide">
           <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
+          <BalanceHistoryChart account={selectedAccount} lines={statement} />
           <SpendingChart breakdown={spendingBreakdown} />
           <ActivityFeed events={events} />
         </div>

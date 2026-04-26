@@ -458,7 +458,7 @@ button[type="submit"]:disabled,
   padding: 6px 0;
 }
 
-/* Statement header + sparkline */
+/* Statement header */
 
 .statement-header {
   display: flex;
@@ -470,36 +470,6 @@ button[type="submit"]:disabled,
 
 .statement-header h2 {
   margin-bottom: 0;
-}
-
-.sparkline {
-  flex-shrink: 0;
-  color: var(--muted);
-}
-
-.sparkline path {
-  stroke: var(--muted);
-}
-
-.sparkline circle {
-  fill: var(--muted);
-}
-
-.sparkline-up path,
-.sparkline-up circle {
-  stroke: var(--positive);
-  fill: var(--positive);
-}
-
-.sparkline-down path,
-.sparkline-down circle {
-  stroke: var(--negative);
-  fill: var(--negative);
-}
-
-.sparkline-empty {
-  font-size: 11px;
-  color: var(--muted);
 }
 
 .flag-badge {
@@ -737,12 +707,6 @@ button[type="submit"]:disabled,
 
 /* Statement export link */
 
-.statement-header-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
 .export-link {
   font-family: var(--mono);
   font-size: 11px;
@@ -963,4 +927,91 @@ button[type="submit"]:disabled,
   font-size: 10px;
   color: var(--muted);
   white-space: nowrap;
+}
+
+/* Balance history chart */
+
+.balance-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.balance-chart-header h2 {
+  margin-bottom: 0;
+}
+
+.balance-chart-end {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.balance-chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.balance-chart-wrap svg {
+  display: block;
+  overflow: visible;
+}
+
+.chart-gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--muted);
+}
+
+.chart-crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.balance-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: var(--shadow);
+  padding: 7px 10px;
+  min-width: 150px;
+  font-size: 11px;
+}
+
+.balance-chart-tooltip-value {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.balance-chart-tooltip-date {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+.balance-chart-tooltip-desc {
+  color: var(--text-h);
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.balance-chart-footnote {
+  margin-top: 4px;
 }

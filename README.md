@@ -37,6 +37,9 @@ checks the accounting math before anything is written to the database.
   occurrence
 - A spending breakdown chart, by category and by month, built from the
   same entries the ledger already records
+- An interactive balance history chart per account, with axis labels, a
+  hover crosshair, and a tooltip, built as plain SVG with no charting
+  library
 - CSV export of any account's full statement
 - Live updates over WebSockets, so every connected browser tab sees new
   activity the moment it is posted, including transfers the scheduler
