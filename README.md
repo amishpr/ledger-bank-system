@@ -234,6 +234,13 @@ time, with labeled, color coded output for each. Open
 If you would rather run them separately, in one terminal run
 `npm run dev --prefix server` and in another run `npm run dev --prefix web`.
 
+If you're using VS Code, the project ships with `.vscode/tasks.json` and
+`.vscode/launch.json`. Open the Run and Debug panel and pick "Debug Full
+Stack (server + browser)" to start the API under the Node debugger and
+open the dashboard in Chrome with breakpoints working on both sides, or
+use the Command Palette's "Tasks: Run Task" for things like `server: dev`,
+`web: dev`, `server: test`, or `db: seed` without leaving the editor.
+
 ## Running the tests
 
 ```bash
