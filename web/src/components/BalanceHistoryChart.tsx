@@ -161,6 +161,7 @@ export function BalanceHistoryChart({ account, lines }: { account: Account | und
           )}
 
           <rect
+            className="balance-chart-hit-area"
             x={MARGIN.left}
             y={MARGIN.top}
             width={plotWidth}

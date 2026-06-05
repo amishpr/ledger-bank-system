@@ -87,6 +87,10 @@
   background: var(--negative);
 }
 
+/* Anything a person can actually click or act on carries the accent
+   color at rest, not just on hover - ws-status right next to this is
+   pure status display and deliberately stays neutral, so the contrast
+   between the two is itself the "this one is clickable" signal. */
 .theme-toggle {
   display: flex;
   align-items: center;
@@ -96,17 +100,19 @@
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  color: var(--muted);
-  border: 1px solid var(--border);
+  color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
   background: var(--panel-bg);
   padding: 5px 10px;
   border-radius: 3px;
   white-space: nowrap;
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
 .theme-toggle:hover {
-  color: var(--text-h);
+  color: var(--accent-strong);
   border-color: var(--accent);
+  background: var(--accent-bg);
 }
 
 .banner-error {
@@ -217,21 +223,32 @@
   text-align: left;
   background: var(--panel-bg-subtle);
   border: 1px solid var(--border);
-  border-left: 2px solid transparent;
+  /* A faint accent edge at rest, not just on hover, is the affordance
+     that says "this whole row is clickable" before anyone touches it. */
+  border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
   border-radius: 2px;
   padding: 8px 10px;
   color: var(--text);
+  cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
+/* Hover is deliberately a lighter treatment than .selected below - so
+   hovering a different card while one is already selected never reads
+   as "now two are selected." */
 .account-card:hover {
   border-color: var(--accent);
   border-left-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-bg) 55%, var(--panel-bg-subtle));
 }
 
 .account-card.selected {
   border-color: var(--accent);
   border-left-color: var(--accent);
+  background: var(--accent-bg);
+}
+
+.account-card.selected:hover {
   background: var(--accent-bg);
 }
 
@@ -621,15 +638,21 @@ button[type="submit"]:disabled,
 .link-button {
   background: none;
   border: none;
-  color: var(--muted);
+  color: var(--accent);
   font-family: var(--mono);
   font-size: 11px;
   text-decoration: underline;
   padding: 0;
+  cursor: pointer;
 }
 
 .link-button:hover {
-  color: var(--accent);
+  color: var(--accent-strong);
+}
+
+.link-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 /* Activity feed */
@@ -712,13 +735,13 @@ button[type="submit"]:disabled,
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: var(--muted);
+  color: var(--accent);
   text-decoration: underline;
   white-space: nowrap;
 }
 
 .export-link:hover {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 /* Recurring transfers */
@@ -792,8 +815,12 @@ button[type="submit"]:disabled,
   margin-top: 6px;
 }
 
-.link-button-danger:hover {
+.link-button-danger {
   color: var(--negative);
+}
+
+.link-button-danger:hover {
+  opacity: 0.75;
 }
 
 /* Spending chart */
@@ -827,14 +854,20 @@ button[type="submit"]:disabled,
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  color: var(--muted);
+  color: var(--accent);
   padding: 5px 9px;
   border-radius: 2px;
+  cursor: pointer;
+}
+
+.chart-tabs button:hover:not(.active) {
+  background: var(--accent-bg);
 }
 
 .chart-tabs button.active {
   background: var(--panel-bg);
   color: var(--text-h);
+  cursor: default;
 }
 
 .chart-rows {
@@ -958,6 +991,10 @@ button[type="submit"]:disabled,
 .balance-chart-wrap svg {
   display: block;
   overflow: visible;
+}
+
+.balance-chart-hit-area {
+  cursor: crosshair;
 }
 
 .chart-gridline {
