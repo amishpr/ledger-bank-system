@@ -210,14 +210,25 @@ Load some demo data so the dashboard is not empty:
 npm run seed
 ```
 
-This creates a set of demo accounts belonging to two fictional people,
-funds them with opening balances, posts a handful of sample transactions
-across a few expense categories (so the spending chart has something to
-show), includes one reversal so you can see what a corrected transaction
-looks like right away, and schedules one recurring transfer that is
-already due. That last one means if you start the app right after
-seeding, you can watch the background job post its first occurrence
-within its first sweep, instead of having to wait and take it on faith.
+This creates a set of demo accounts belonging to two fictional people and
+generates a full year of realistic activity for them: biweekly paychecks,
+weekly groceries, monthly rent and subscriptions, dining out, a handful
+of large one-off purchases, and a monthly transfer to savings, all spread
+across real calendar dates ending today. It's generated with a seeded
+random number generator, so re-running the seed always produces the same
+year rather than a different one each time. It also includes one
+reversal so you can see what a corrected transaction looks like, and
+schedules one recurring transfer that is already due, so if you start
+the app right after seeding, you can watch the background job post its
+first occurrence within its first sweep instead of having to take it on
+faith.
+
+The year of history is what gives the balance chart and the spending
+breakdown something real to show. The statement table only displays the
+most recent 40 entries, since a year of activity would make it
+unreadable, but the balance chart pulls a much larger window on its own
+so the full year is visible there, and the CSV export always has
+everything regardless of what either view is currently showing.
 
 ## Running the app
 

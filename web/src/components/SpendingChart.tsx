@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SpendingBreakdown } from "../api/types";
+import type { SpendingBreakdown, SpendingByCategory } from "../api/types";
 import { formatMoney } from "../money";
 
 const CATEGORY_COLOR_VARS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5"];
@@ -7,6 +7,23 @@ const CATEGORY_COLOR_VARS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-
 function monthLabel(month: string): string {
   const [year, m] = month.split("-").map(Number);
   return new Date(year!, m! - 1, 1).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+}
+
+// The categorical palette has 5 validated slots (see index.css) - cycling
+// back to slot 1 for a 6th category would make two different categories
+// share a color, so anything past the palette size gets folded into Other
+// instead of cycling. byCategory already arrives
+// sorted by total descending, so folding the smallest entries is just
+// keeping the top 4 and summing whatever's left.
+function withOtherFold(categories: SpendingByCategory[]): (SpendingByCategory & { isOther?: boolean })[] {
+  if (categories.length <= CATEGORY_COLOR_VARS.length) return categories;
+  const top = categories.slice(0, CATEGORY_COLOR_VARS.length - 1);
+  const rest = categories.slice(CATEGORY_COLOR_VARS.length - 1);
+  const otherTotal = rest.reduce((sum, c) => sum + BigInt(c.totalMinor), 0n);
+  return [
+    ...top,
+    { accountId: "other", accountName: `Other (${rest.length})`, totalMinor: otherTotal.toString(), isOther: true },
+  ];
 }
 
 export function SpendingChart({ breakdown }: { breakdown: SpendingBreakdown }) {
@@ -33,19 +50,16 @@ export function SpendingChart({ breakdown }: { breakdown: SpendingBreakdown }) {
       {hasData && view === "category" && (
         <div className="chart-rows" role="img" aria-label="Total spending by category">
           {(() => {
-            const max = Math.max(...breakdown.byCategory.map((c) => Number(c.totalMinor)));
-            return breakdown.byCategory.map((cat, i) => {
+            const rows = withOtherFold(breakdown.byCategory);
+            const max = Math.max(...rows.map((c) => Number(c.totalMinor)));
+            return rows.map((cat, i) => {
               const pct = max > 0 ? (Number(cat.totalMinor) / max) * 100 : 0;
-              const colorVar = CATEGORY_COLOR_VARS[i % CATEGORY_COLOR_VARS.length];
+              const color = cat.isOther ? "var(--muted)" : `var(${CATEGORY_COLOR_VARS[i]})`;
               return (
                 <div className="chart-row" key={cat.accountId}>
                   <span className="chart-row-label">{cat.accountName}</span>
                   <div className="chart-row-track">
-                    <div
-                      className="chart-row-bar"
-                      style={{ width: `${pct}%`, background: `var(${colorVar})` }}
-                      title={formatMoney(cat.totalMinor)}
-                    />
+                    <div className="chart-row-bar" style={{ width: `${pct}%`, background: color }} title={formatMoney(cat.totalMinor)} />
                   </div>
                   <span className="chart-row-value">{formatMoney(cat.totalMinor)}</span>
                 </div>

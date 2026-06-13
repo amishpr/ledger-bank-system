@@ -20,6 +20,13 @@ import { useToasts } from "./useToasts";
 
 const MAX_FEED_EVENTS = 20;
 const PULSE_DURATION_MS = 1000;
+const STATEMENT_LIMIT = 40;
+// The balance chart intentionally gets a much larger window than the
+// statement table - a year of seeded activity is the whole point, and a
+// 400-row table would be unusable, but 400 points on a line chart reads
+// fine. See BalanceHistoryChart's footnote: the CSV export, not the
+// table, is what guarantees every charted value is reachable elsewhere.
+const CHART_LIMIT = 400;
 const EMPTY_BREAKDOWN: SpendingBreakdown = { byCategory: [], byMonth: [] };
 
 type PulseDirection = "up" | "down";
@@ -41,6 +48,7 @@ function App() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [statement, setStatement] = useState<StatementLine[]>([]);
+  const [chartHistory, setChartHistory] = useState<StatementLine[]>([]);
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pulsingAccounts, setPulsingAccounts] = useState<Map<string, PulseDirection>>(new Map());
@@ -59,8 +67,12 @@ function App() {
   }, []);
 
   const refreshStatement = useCallback(async (accountId: string) => {
-    const lines = await api.getStatement(accountId, 25);
+    const [lines, history] = await Promise.all([
+      api.getStatement(accountId, STATEMENT_LIMIT),
+      api.getStatement(accountId, CHART_LIMIT),
+    ]);
     setStatement(lines);
+    setChartHistory(history);
   }, []);
 
   const refreshRecurring = useCallback(async () => {
@@ -176,7 +188,7 @@ function App() {
         </div>
         <div className="col wide">
           <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
-          <BalanceHistoryChart account={selectedAccount} lines={statement} />
+          <BalanceHistoryChart account={selectedAccount} lines={chartHistory} />
           <SpendingChart breakdown={spendingBreakdown} />
           <ActivityFeed events={events} />
         </div>

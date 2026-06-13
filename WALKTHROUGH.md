@@ -253,6 +253,60 @@ and unfamiliar API surface than it saved in code written. That is a
 judgment call, not a rule, and a real production dashboard with a dozen
 chart types would reasonably reach for a charting library instead.
 
+**The demo data is a year of history generated with a seeded random
+number generator, not `Math.random()`.** The seed script (`seed.ts`)
+builds roughly 250 transactions spread across real calendar dates over
+the past year: biweekly paychecks, weekly groceries, monthly rent, and
+so on, with amounts drawn from a small seedable pseudo-random generator
+(a `mulberry32` implementation) instead of true randomness. That one
+choice means running `npm run seed` twice produces the exact same year
+of activity both times, which is what let the amount ranges be tuned
+once against a known sequence and trusted not to accidentally push an
+account negative on some future run. It is also just a better property
+for a demo fixture to have: reproducible data is easier to reason about,
+describe, and debug than data that is different every time you look at it.
+
+**Backdating the demo data happens outside the core ledger function, not
+inside it.** `postTransaction` never accepts a caller-supplied timestamp,
+on purpose, since that is what stops any client from ever being able to
+lie about when something really happened. The seed script still needs a
+year of realistically-dated history, so it posts every transaction
+through the normal function first, exactly like a real transfer would be,
+and only afterward reaches directly into the database with Prisma to set
+that row's `createdAt` to the intended historical date. The invariant the
+public function protects is never weakened. Only a script that already
+has direct database access, and is clearly not something a client could
+ever call, gets to backdate anything.
+
+**The balance chart and the statement table deliberately stopped sharing
+one data window once the seed data grew.** Earlier, the chart was built
+to reuse the exact same handful of rows as the statement table below it,
+specifically so every value the chart's tooltip could show was also a
+visible row in that table, which matters for accessibility: a tooltip
+should enhance a value that is reachable another way, not be the only way
+to reach it. A year of history broke that pairing, since showing all of
+it in the table would make the table unusable, but a chart with hundreds
+of points on it renders fine. The fix was to let them diverge on purpose:
+the table stays capped at forty rows so it reads as "recent activity,"
+the chart fetches a much larger window so a full year is visible, and the
+CSV export, which already contains a whole account's history, becomes the
+thing that keeps every charted value reachable outside the chart. Same
+principle, different mechanism, once the scale of the data changed
+what the first mechanism could reasonably do.
+
+**A sixth expense category would have silently broken the chart's colors,
+so it gets folded into "Other" instead of cycling.** The spending-by-category
+chart assigns one color per category from a small palette validated for
+colorblind separation, with five defined slots. The seed data ends up with
+six expense categories once rent, groceries, and a one-off shopping account
+are added. Cycling back to the first color for a sixth category would have
+made two unrelated categories share a color, which defeats the entire point
+of a validated categorical palette. Instead, once there are more categories
+than colors, the chart keeps the top four by total and sums everything past
+that into a single muted "Other" bar. This was already a latent bug before
+the seed data changed, reachable any time a real user created a sixth
+expense account by hand; the seed data just made it obvious enough to fix.
+
 ## Why each library was chosen
 
 **Express** for the API framework, mainly because it is the tool most

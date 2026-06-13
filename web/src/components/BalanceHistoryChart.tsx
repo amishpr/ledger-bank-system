@@ -183,7 +183,7 @@ export function BalanceHistoryChart({ account, lines }: { account: Account | und
         )}
       </div>
       <p className="hint balance-chart-footnote">
-        Showing the {points.length} most recent balance points. Every value here also appears in the statement table
+        Showing the {points.length} most recent balance points. Every value here is also in the full CSV export
         above.
       </p>
     </div>
