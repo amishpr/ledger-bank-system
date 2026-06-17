@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, ApiRequestError, statementExportUrl } from "../api/client";
+import { api, ApiRequestError } from "../api/client";
 import type { Account, StatementLine } from "../api/types";
 import { isLargeAmount } from "../flags";
 import { entryIncreasesBalance } from "../ledgerMath";
@@ -17,7 +17,22 @@ export function StatementPanel({
   onToast: (message: string, kind?: "success" | "error") => void;
 }) {
   const [reversingId, setReversingId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleExport(accountId: string) {
+    setError(null);
+    setExporting(true);
+    try {
+      await api.exportStatementCsv(accountId);
+    } catch (err) {
+      const message = err instanceof ApiRequestError ? err.message : "Could not export the statement.";
+      setError(message);
+      onToast(message, "error");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function handleReverse(transactionId: string, description: string) {
     setError(null);
@@ -48,9 +63,14 @@ export function StatementPanel({
     <div className="panel">
       <div className="statement-header">
         <h2>Statement — {account.name}</h2>
-        <a className="export-link" href={statementExportUrl(account.id)} download>
-          Export CSV
-        </a>
+        <button
+          className="export-link"
+          disabled={exporting}
+          onClick={() => handleExport(account.id)}
+          title="Download this account's full history as CSV"
+        >
+          {exporting ? "Exporting…" : "Export CSV"}
+        </button>
       </div>
       {error && <div className="form-error">{error}</div>}
       <table className="statement-table">

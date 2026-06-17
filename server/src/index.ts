@@ -17,7 +17,15 @@ const app = express();
 // silently coerced to (lossy) JS numbers.
 app.set("json replacer", (_key: string, value: unknown) => (typeof value === "bigint" ? value.toString() : value));
 
-app.use(cors({ origin: process.env.CORS_ORIGIN ?? "http://localhost:5173" }));
+// Content-Disposition has to be exposed explicitly or a cross-origin
+// fetch cannot read it, and the CSV download would lose the filename the
+// export route sets.
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
+    exposedHeaders: ["Content-Disposition"],
+  }),
+);
 app.use(express.json());
 
 app.get("/health", (_req, res) => res.json({ ok: true }));

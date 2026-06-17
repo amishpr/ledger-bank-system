@@ -5,6 +5,7 @@ import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, Statem
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
+import { DemoBanner } from "./components/DemoBanner";
 import { NewAccountForm } from "./components/NewAccountForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { SpendingChart } from "./components/SpendingChart";
@@ -164,6 +165,8 @@ function App() {
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
+
+      <DemoBanner />
 
       {loadError && <div className="banner-error">{loadError}</div>}
 

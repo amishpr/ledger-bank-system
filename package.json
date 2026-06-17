@@ -1,11 +1,12 @@
 {
-  "name": "ledger-app",
+  "name": "ledger-bank-system",
   "private": true,
   "version": "0.1.0",
   "scripts": {
     "dev": "concurrently -n server,web -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix web\"",
+    "dev:demo": "npm run dev:demo --prefix web",
     "seed": "npm run seed --prefix server",
-    "test": "npm run test --prefix server",
+    "test": "npm run test --prefix server && npm run test --prefix web",
     "build": "npm run build --prefix server && npm run build --prefix web"
   },
   "devDependencies": {
