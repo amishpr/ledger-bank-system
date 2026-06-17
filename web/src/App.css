@@ -15,24 +15,21 @@
   flex-wrap: wrap;
 }
 
+/* Top aligned, not centered: the title block is two lines tall, so
+   centering dropped the logo well below the buttons on the right, which
+   sit at the top of the header. */
 .brand {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
+/* The tile, its corners and its gradient all live in favicon.svg now, so
+   this only has to reserve the space. */
 .brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
   width: 32px;
   height: 32px;
-  border-radius: 3px;
-  background: linear-gradient(155deg, var(--accent), var(--accent-strong));
-  color: #ffffff;
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 15px;
   flex-shrink: 0;
 }
 

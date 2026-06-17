@@ -151,7 +151,12 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-mark">L</span>
+          {/* The same file the browser tab uses. BASE_URL rather than a
+              literal "/" because GitHub Pages serves the app from a
+              subdirectory, where a root-relative path would 404. The alt
+              is empty on purpose: the <h1> beside it already says Ledger,
+              so naming the logo too would just repeat it. */}
+          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
           <div>
             <h1>Ledger</h1>
             <p className="tagline">A double-entry core-banking ledger with an append-only, idempotent transaction API.</p>
