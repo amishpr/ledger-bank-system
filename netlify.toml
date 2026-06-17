@@ -1,0 +1,16 @@
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+# Netlify serves static files only, so the deployed build runs the
+# in-browser demo backend (web/src/demo) instead of calling the Express
+# API. See README.md for what that does and does not cover.
+[build.environment]
+  VITE_DEMO = "true"
+
+# Single-page app: hand every path to index.html rather than 404ing.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
