@@ -45,9 +45,13 @@
   font-family: var(--mono);
 }
 
+/* Stretch, not center: a <button> and an <a> get different default line
+   heights, which left the theme button 1.5px shorter than the status pill
+   and the repo link beside it. Stretching makes all three the height of
+   the tallest, so their top and bottom edges line up. */
 .header-actions {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
 }
 
@@ -88,7 +92,8 @@
    color at rest, not just on hover - ws-status right next to this is
    pure status display and deliberately stays neutral, so the contrast
    between the two is itself the "this one is clickable" signal. */
-.theme-toggle {
+.theme-toggle,
+.repo-link {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -103,10 +108,12 @@
   padding: 5px 10px;
   border-radius: 3px;
   white-space: nowrap;
+  text-decoration: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.repo-link:hover {
   color: var(--accent-strong);
   border-color: var(--accent);
   background: var(--accent-bg);
@@ -120,6 +127,20 @@
   border-radius: 3px;
   margin-bottom: 14px;
   font-size: 12px;
+}
+
+.about-panel {
+  margin-bottom: 14px;
+}
+
+.about-panel p {
+  font-size: 12px;
+  line-height: 1.65;
+  max-width: 96ch;
+}
+
+.about-panel p + p {
+  margin-top: 7px;
 }
 
 .banner-demo {

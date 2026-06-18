@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 import { api } from "./api/client";
 import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, StatementLine } from "./api/types";
+import { AboutPanel } from "./components/AboutPanel";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
 import { DemoBanner } from "./components/DemoBanner";
 import { NewAccountForm } from "./components/NewAccountForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
+import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
 import { StatementPanel } from "./components/StatementPanel";
 import { StatsBar } from "./components/StatsBar";
@@ -167,9 +169,12 @@ function App() {
             <span className="ws-dot" />
             {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Disconnected"}
           </div>
+          <RepoLink />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
+
+      <AboutPanel />
 
       <DemoBanner />
 
