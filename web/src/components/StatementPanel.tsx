@@ -52,7 +52,7 @@ export function StatementPanel({
 
   if (!account) {
     return (
-      <div className="panel">
+      <div className="panel statement-panel">
         <h2>Statement</h2>
         <p className="hint">Select an account to see its activity.</p>
       </div>
@@ -60,7 +60,7 @@ export function StatementPanel({
   }
 
   return (
-    <div className="panel">
+    <div className="panel statement-panel">
       <div className="statement-header">
         <h2>Statement — {account.name}</h2>
         <button
@@ -73,61 +73,66 @@ export function StatementPanel({
         </button>
       </div>
       {error && <div className="form-error">{error}</div>}
-      <table className="statement-table">
-        <thead>
-          <tr>
-            <th>When</th>
-            <th>Description</th>
-            <th>Direction</th>
-            <th className="num">Amount</th>
-            <th className="num">Balance</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {lines.length === 0 && (
+      {/* The row is too dense to reflow below roughly 630px, so it scrolls
+          inside this container instead of widening the whole page. A
+          scrollable region has to be focusable to be reachable by keyboard. */}
+      <div className="table-scroll" tabIndex={0} role="region" aria-label={`Statement for ${account.name}`}>
+        <table className="statement-table">
+          <thead>
             <tr>
-              <td colSpan={6} className="hint">
-                No activity yet.
-              </td>
+              <th>When</th>
+              <th>Description</th>
+              <th>Direction</th>
+              <th className="num">Amount</th>
+              <th className="num">Balance</th>
+              <th />
             </tr>
-          )}
-          {lines.map((line) => {
-            const increase = entryIncreasesBalance(account.type, line.direction);
-            return (
-              <tr key={line.entryId}>
-                <td className="muted">{new Date(line.createdAt).toLocaleString()}</td>
-                <td>
-                  {line.description}
-                  {isLargeAmount(line.amountMinor) && (
-                    <span className="flag-badge" title="Above the demo large-transaction threshold of $1,000">
-                      Large
-                    </span>
-                  )}
-                </td>
-                <td>
-                  <span className={`direction-badge ${increase ? "increase" : "decrease"}`}>{line.direction}</span>
-                </td>
-                <td className={`num ${increase ? "positive" : "negative"}`}>
-                  {increase ? "+" : "-"}
-                  {formatMoney(line.amountMinor)}
-                </td>
-                <td className="num">{formatMoney(line.runningBalanceMinor)}</td>
-                <td>
-                  <button
-                    className="link-button"
-                    disabled={reversingId === line.transactionId}
-                    onClick={() => handleReverse(line.transactionId, line.description)}
-                    title="Post an offsetting reversal transaction"
-                  >
-                    {reversingId === line.transactionId ? "…" : "Reverse"}
-                  </button>
+          </thead>
+          <tbody>
+            {lines.length === 0 && (
+              <tr>
+                <td colSpan={6} className="hint">
+                  No activity yet.
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            )}
+            {lines.map((line) => {
+              const increase = entryIncreasesBalance(account.type, line.direction);
+              return (
+                <tr key={line.entryId}>
+                  <td className="muted">{new Date(line.createdAt).toLocaleString()}</td>
+                  <td>
+                    {line.description}
+                    {isLargeAmount(line.amountMinor) && (
+                      <span className="flag-badge" title="Above the demo large-transaction threshold of $1,000">
+                        Large
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    <span className={`direction-badge ${increase ? "increase" : "decrease"}`}>{line.direction}</span>
+                  </td>
+                  <td className={`num ${increase ? "positive" : "negative"}`}>
+                    {increase ? "+" : "-"}
+                    {formatMoney(line.amountMinor)}
+                  </td>
+                  <td className="num">{formatMoney(line.runningBalanceMinor)}</td>
+                  <td>
+                    <button
+                      className="link-button"
+                      disabled={reversingId === line.transactionId}
+                      onClick={() => handleReverse(line.transactionId, line.description)}
+                      title="Post an offsetting reversal transaction"
+                    >
+                      {reversingId === line.transactionId ? "…" : "Reverse"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

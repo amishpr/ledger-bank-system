@@ -221,8 +221,7 @@
 .app-grid {
   display: grid;
   grid-template-columns: 320px 1fr;
-  gap: 14px;
-  align-items: start;
+  gap: 12px 14px;
 }
 
 @media (max-width: 860px) {
@@ -231,11 +230,18 @@
   }
 }
 
+/* The lower two columns stretch to the taller of the pair, and each one's
+   last panel takes up the slack, so the bottom edges line up instead of
+   one side trailing off. */
 .col {
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+}
+
+.col > :last-child {
+  flex: 1;
 }
 
 .panel {
@@ -603,12 +609,65 @@ button[type="submit"]:disabled,
 
 /* Statement table */
 
+/* The statement panel matches the height of the Accounts panel beside it
+   instead of growing with its row count. contain: size stops the table
+   from contributing to the grid row height, so Accounts alone sets it and
+   the panel stretches to fit. The table then scrolls inside. The min-height
+   keeps it usable when there are only a few accounts. */
+.statement-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 360px;
+  contain: size;
+}
+
+.statement-panel .statement-header,
+.statement-panel .form-error {
+  flex: none;
+}
+
+/* Scrolls both ways: down through the rows, and sideways on a narrow
+   screen where the dense row can't reflow. */
+.table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Stacked layout has no row to match, so the panel takes its natural
+   size and the table gets a fixed window instead. */
+@media (max-width: 860px) {
+  .statement-panel {
+    contain: none;
+    min-height: 0;
+  }
+
+  .table-scroll {
+    flex: none;
+    max-height: 480px;
+  }
+}
+
+.table-scroll:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .statement-table {
   width: 100%;
   font-size: 12px;
 }
 
+/* The header stays put while the rows scroll. The bottom rule is an inset
+   shadow because a border on a sticky cell in a collapsed table scrolls
+   away with the rows. */
 .statement-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel-bg);
+  box-shadow: inset 0 -1px 0 var(--border);
   text-align: left;
   font-family: var(--mono);
   color: var(--muted);
@@ -617,7 +676,6 @@ button[type="submit"]:disabled,
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
 }
 
 .statement-table td {
@@ -645,6 +703,16 @@ button[type="submit"]:disabled,
   font-family: var(--mono);
   font-size: 11px;
   white-space: nowrap;
+}
+
+/* Once the row has to scroll sideways, a timestamp pinned to one line is
+   the widest thing competing with the amount for the visible area. The
+   description column already wraps at this size, so let the date wrap too
+   and the money stays on screen. */
+@media (max-width: 700px) {
+  .statement-table .muted {
+    white-space: normal;
+  }
 }
 
 .positive {

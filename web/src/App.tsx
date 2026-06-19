@@ -182,14 +182,19 @@ function App() {
 
       {accounts.length > 0 && <StatsBar accounts={accounts} />}
 
+      {/* Two rows. The first pairs Accounts with the Statement, and the
+          Statement is sized to the Accounts panel (see .statement-panel in
+          App.css). The second holds the forms on the left and the charts
+          and live feed on the right. */}
       <main className="app-grid">
+        <AccountsPanel
+          accounts={accounts}
+          selectedAccountId={selectedAccountId}
+          pulsingAccounts={pulsingAccounts}
+          onSelect={setSelectedAccountId}
+        />
+        <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
         <div className="col">
-          <AccountsPanel
-            accounts={accounts}
-            selectedAccountId={selectedAccountId}
-            pulsingAccounts={pulsingAccounts}
-            onSelect={setSelectedAccountId}
-          />
           <NewAccountForm onCreated={refreshAccounts} onToast={pushToast} />
           <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
           <RecurringTransfersPanel
@@ -199,8 +204,7 @@ function App() {
             onToast={pushToast}
           />
         </div>
-        <div className="col wide">
-          <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
+        <div className="col">
           <BalanceHistoryChart account={selectedAccount} lines={chartHistory} />
           <SpendingChart breakdown={spendingBreakdown} />
           <ActivityFeed events={events} />
