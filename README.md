@@ -47,6 +47,9 @@ checks the accounting math before anything is written to the database.
 - A REST API with input validation and clear error codes
 - An automated test suite covering the accounting rules and the scheduler
   directly
+- A demo build that runs the whole backend inside the browser, so the
+  dashboard can be hosted on a free static host with nothing to pay for
+  and no server to keep awake
 
 ## Tech stack
 
@@ -64,7 +67,8 @@ detail in [WALKTHROUGH.md](WALKTHROUGH.md).
 ## Project structure
 
 ```
-ledger-app/
+ledger-bank-system/
+├─ .github/workflows/         Builds and publishes the demo to GitHub Pages
 ├─ server/                    Express API
 │  ├─ prisma/
 │  │  ├─ schema.prisma        Account, Transaction, Entry, RecurringTransfer, AuditLog
@@ -81,12 +85,14 @@ ledger-app/
 ├─ web/                       React dashboard
 │  ├─ src/
 │  │  ├─ components/          Accounts panel, transfer form, statement, recurring transfers, spending chart, feed
-│  │  ├─ api/                 Fetch client and shared types
+│  │  ├─ api/                 The LedgerApi interface, the HTTP client, and shared types
+│  │  ├─ demo/                In-browser backend used by the hosted demo build, and its tests
 │  │  ├─ money.ts             Formatting and parsing for cent amounts
 │  │  ├─ ledgerMath.ts         Client side mirror of the balance direction rule
 │  │  └─ useLedgerSocket.ts   WebSocket hook with reconnect
 │  └─ package.json
 ├─ docker-compose.yml         Postgres for a production style local run
+├─ netlify.toml               Build settings for the hosted demo
 ├─ package.json               Root scripts that run both apps together
 └─ README.md
 ```
@@ -171,7 +177,7 @@ Postgres instead of the default SQLite setup, and is entirely optional.
 
 ## Setup and installation
 
-Clone or download the project, then from the `ledger-app` folder install
+Clone or download the project, then from the `ledger-bank-system` folder install
 dependencies for all three package.json files. They are kept separate on
 purpose so the API and the frontend can be deployed independently later.
 
@@ -232,7 +238,7 @@ everything regardless of what either view is currently showing.
 
 ## Running the app
 
-From the `ledger-app` root:
+From the `ledger-bank-system` root:
 
 ```bash
 npm run dev
@@ -252,20 +258,88 @@ open the dashboard in Chrome with breakpoints working on both sides, or
 use the Command Palette's "Tasks: Run Task" for things like `server: dev`,
 `web: dev`, `server: test`, or `db: seed` without leaving the editor.
 
+## Demo mode, and hosting this for free
+
+The API is a long running Node process with a WebSocket server, a
+background scheduler, and a database, so a static host like Netlify or
+GitHub Pages cannot run it. Rather than leave the project as something you
+have to clone and start locally before you can see anything, the frontend
+can run against a second backend that lives entirely in the browser.
+
+Every component talks to a `LedgerApi` interface rather than to `fetch`
+directly, and there are two implementations of it. One is the HTTP client
+that calls Express. The other, in `web/src/demo`, is a port of the server's
+ledger code that keeps its tables in memory: the same balance check, the
+same overdraft protection, the same idempotency keys, the same reversals,
+the same calendar math, and the same recurring transfer sweep running on a
+15 second interval inside the tab. It seeds itself on load with the same
+year of activity the real seed script generates, using the same seeded
+random number generator, so the hosted demo and a local checkout show the
+same data.
+
+Run it locally with:
+
+```bash
+npm run dev:demo
+```
+
+No API and no database need to be running. The dashboard shows a banner
+explaining that it is in demo mode, and a reset button that reloads and
+regenerates the data. Everything written in demo mode lives in memory only
+and is gone on reload.
+
+There are two ways to deploy it, and both are set up already.
+
+**Netlify.** Point Netlify at the repository and let it read the included
+`netlify.toml`, which sets the base directory to `web`, publishes
+`web/dist`, and sets `VITE_DEMO=true` for the build. No other configuration
+is needed.
+
+**GitHub Pages.** The workflow in `.github/workflows/deploy-demo.yml`
+lints, tests, and builds the demo on every push to `main`, then publishes
+it. It needs one setting changed in the repository first: go to Settings,
+then Pages, and set Source to "GitHub Actions". Without that the workflow
+runs but cannot publish. The site then appears at
+`https://<your-username>.github.io/<repository-name>/`.
+
+Pages serves a project site from a subdirectory rather than the domain
+root, so the built asset URLs need that prefix or every file 404s. The
+workflow reads the correct prefix from the `configure-pages` action and
+passes it as `VITE_BASE`, and `web/vite.config.ts` turns that into Vite's
+`base`. It resolves to `/` when unset, which is what Netlify and local
+development use, so the same build command works for all three.
+
+Nothing has to be paid for or kept awake in either case. The same build
+also works on Vercel or Cloudflare Pages.
+
+What the demo does not cover: there is no shared state between visitors,
+since each browser gets its own copy of the data, and it is not a real
+deployment of the API. If you want the real thing running live, the API
+needs a host that can keep a Node process alive, such as Render or Koyeb,
+with a Postgres database from a provider like Neon or Supabase. In that
+setup you would deploy the frontend with `VITE_DEMO` unset and
+`VITE_API_URL` and `VITE_WS_URL` pointed at the API, and set `CORS_ORIGIN`
+on the API to the frontend's URL.
+
 ## Running the tests
 
 ```bash
 npm test
 ```
 
-This runs the backend's Vitest suite, which sets up its own separate SQLite
-database so it never touches your development data. The tests check the
+This runs both suites. The backend's Vitest suite sets up its own separate
+SQLite database so it never touches your development data, and checks the
 core accounting rules directly: a transaction that does not balance gets
 rejected, an entry that would overdraw an account gets rejected without
 changing the balance, a retried request with the same idempotency key
 returns the original result instead of posting twice, reusing a key with a
 different payload is treated as a conflict, and reversing a transaction
 correctly restores the prior balance and marks the original as voided.
+
+The frontend suite runs the same checks against the in-browser demo
+backend, case for case, so the two implementations cannot quietly drift
+apart on the rules that matter. It also checks that the generated year of
+demo data never takes the main checking account negative at any point.
 
 ## Building for production
 
@@ -275,7 +349,8 @@ npm run build
 
 This compiles the API's TypeScript to `server/dist` and builds the
 frontend into `web/dist` as static files ready to be served by any static
-host.
+host. That build expects a running API. To build the self contained demo
+version instead, run `npm run build:demo --prefix web`.
 
 ## Switching from SQLite to Postgres
 
@@ -310,6 +385,8 @@ datasource configuration.
 |---|---|---|
 | `VITE_API_URL` | `http://localhost:4000` | Base URL the dashboard uses for REST calls |
 | `VITE_WS_URL` | `ws://localhost:4000/ws` | URL the dashboard connects to for live updates |
+| `VITE_DEMO` | unset | Set to `true` to run the in-browser backend instead of calling the API. `netlify.toml` and the GitHub Pages workflow set this for the hosted builds |
+| `VITE_BASE` | unset | Path prefix the site is served from, needed only on GitHub Pages, where it is `/<repository-name>`. Unset means the domain root |
 
 ## What is intentionally left out
 
