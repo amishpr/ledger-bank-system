@@ -1,0 +1,16 @@
+{
+  "name": "Ledger — A double-entry core banking system",
+  "short_name": "Ledger",
+  "description": "A double-entry core banking ledger with an append-only, idempotent transaction API and a live React dashboard. The whole demo runs in your browser.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#1a1f35",
+  "theme_color": "#1a1f35",
+  "categories": ["finance", "productivity", "developer tools"],
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ]
+}
