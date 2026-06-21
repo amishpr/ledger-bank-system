@@ -10,7 +10,50 @@
   VITE_DEMO = "true"
 
 # Single-page app: hand every path to index.html rather than 404ing.
+#
+# The dashboard has no client-side router, so this means any path at all
+# renders the same page with a 200. For crawlers that would be an endless
+# supply of near-duplicate URLs, which is why index.html carries an
+# absolute self-referencing canonical tag pointing at "/" - every one of
+# those paths folds back into the single real page.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Vite fingerprints everything under /assets, so those files can never
+# change behind a given URL and are safe to cache forever. Getting this
+# right is worth real Core Web Vitals points on a repeat visit, and Core
+# Web Vitals are a Google ranking signal.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# The entry point is not fingerprinted, so it has to be revalidated or a
+# visitor keeps loading a stale build that points at deleted assets.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# The link-preview card and the icons change rarely but are not
+# fingerprinted either, so they get a day rather than a year. Chat clients
+# cache unfurls hard on their own side regardless.
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Stops a browser from second-guessing a declared content type, which
+    # is what makes a mislabelled upload turn into a script.
+    X-Content-Type-Options = "nosniff"
+    # Send the full URL to same-origin requests and only the origin to
+    # everyone else.
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Frame-Options = "SAMEORIGIN"
+    # The demo needs none of these, so hand none of them out.
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
