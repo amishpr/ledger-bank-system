@@ -2,12 +2,126 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ledger</title>
+
+    <title>Ledger — A double-entry core banking system</title>
+    <meta
+      name="description"
+      content="A double-entry core banking ledger with an append-only, idempotent transaction API and a live React dashboard. The whole demo runs in your browser."
+    />
+    <meta name="author" content="Amish Prajapati" />
+
+    <!-- Absolute, and the same on every deployment on purpose. This build is
+         published twice - to Netlify and to GitHub Pages - and this tag is
+         what tells Google the two are one page, so the Netlify copy takes
+         all of the ranking signal. It also folds away the junk URLs the SPA
+         redirect in netlify.toml would otherwise answer with a 200: the app
+         has no client-side router, so every path renders this same page. -->
+    <link rel="canonical" href="https://amishpr-ledger.netlify.app/" />
+    <!-- Replaced with a noindex tag by the seo() plugin in vite.config.ts on
+         every build that is not the production Netlify one. -->
+    <!--SEO-ROBOTS-->
+
+    <!-- Vite rewrites these root-relative hrefs to sit under `base`, which is
+         what keeps them working on GitHub Pages' /repo-name/ subpath. -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Matches the two themes in web/src/index.css, so the browser chrome
+         does not fight the page on mobile. -->
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#1a1f35" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)" />
+
+    <!-- Open Graph. iMessage, Discord, Slack and LinkedIn all read these, and
+         all of them need an absolute image URL fetched over https - a
+         root-relative path renders as a bare link with no image. The size
+         hints let a client reserve the right space before the image lands. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Ledger" />
+    <meta property="og:title" content="Ledger — A double-entry core banking system" />
+    <meta
+      property="og:description"
+      content="A double-entry core banking ledger with an append-only, idempotent transaction API and a live React dashboard. The whole demo runs in your browser."
+    />
+    <meta property="og:url" content="https://amishpr-ledger.netlify.app/" />
+    <meta property="og:image" content="https://amishpr-ledger.netlify.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="The Ledger wordmark above a rising balance-history chart from the dashboard."
+    />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- X/Twitter ignores og:image sizing and needs its own card type to show
+         the image large rather than as a thumbnail. -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Ledger — A double-entry core banking system" />
+    <meta
+      name="twitter:description"
+      content="A double-entry core banking ledger with an append-only, idempotent transaction API and a live React dashboard. The whole demo runs in your browser."
+    />
+    <meta name="twitter:image" content="https://amishpr-ledger.netlify.app/og-image.png" />
+    <meta
+      name="twitter:image:alt"
+      content="The Ledger wordmark above a rising balance-history chart from the dashboard."
+    />
+
+    <!-- Structured data, so Google can tell this URL is the running app and
+         the GitHub repository is the same project rather than a rival copy.
+         No rating or review is claimed here, because there is not a real one. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Ledger",
+        "url": "https://amishpr-ledger.netlify.app/",
+        "applicationCategory": "FinanceApplication",
+        "applicationSubCategory": "Core banking ledger",
+        "operatingSystem": "Any modern web browser",
+        "browserRequirements": "Requires JavaScript",
+        "description": "A double-entry core banking ledger with an append-only, idempotent transaction API and a live React dashboard. The whole demo runs in your browser.",
+        "image": "https://amishpr-ledger.netlify.app/og-image.png",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "codeRepository": "https://github.com/amishpr/ledger-bank-system",
+        "programmingLanguage": ["TypeScript", "SQL"],
+        "author": { "@type": "Person", "name": "Amish Prajapati" },
+        "featureList": [
+          "Double-entry accounting enforced on every transaction",
+          "Money stored as whole cents with BigInt, never as a float",
+          "Idempotent transaction posting with client-supplied keys",
+          "Reversals instead of edits or deletes, so the ledger stays a true history",
+          "Recurring transfers posted on a schedule",
+          "Live balance updates over WebSockets",
+          "CSV statement export and a spending breakdown chart"
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <!-- The dashboard is client-rendered, so #root is empty until React runs.
+         Googlebot executes JavaScript and sees the real page, but plenty of
+         crawlers do not, and this at least leaves them something true to read
+         rather than a blank body. -->
+    <noscript>
+      <h1>Ledger</h1>
+      <p>
+        A double-entry core banking ledger with an append-only, idempotent transaction API and a live
+        React dashboard. This dashboard needs JavaScript, because the hosted build runs the entire
+        backend - the accounting rules, the recurring-transfer scheduler and the statement queries -
+        inside your browser.
+      </p>
+      <p>
+        The source, along with a full write-up of the design decisions, is at
+        <a href="https://github.com/amishpr/ledger-bank-system">github.com/amishpr/ledger-bank-system</a>.
+      </p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
