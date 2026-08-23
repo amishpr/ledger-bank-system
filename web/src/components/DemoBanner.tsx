@@ -1,19 +1,21 @@
+import { ArrowCounterClockwise } from "@phosphor-icons/react";
 import { DEMO_MODE } from "../demo/mode";
 
 export function DemoBanner() {
   if (!DEMO_MODE) return null;
 
   return (
-    <div className="banner-demo">
+    <aside className="demo-note" aria-label="Demo mode">
+      <strong className="demo-note-title">Demo mode</strong>
       <p>
-        <strong>Demo mode.</strong> The API, the database, and the recurring transfer scheduler are all running
-        inside this browser tab, so this page can be hosted as a static site. Nothing is sent anywhere, and every
-        change is discarded on reload. The same dashboard runs against the real Node and Express API, Prisma, and
-        WebSocket server when the project is cloned and started locally.
+        The API, the database and the recurring transfer scheduler all run inside this tab. Nothing is sent anywhere,
+        and every change is gone on reload. Cloned and started locally, the same dashboard runs against the real
+        Express API, Prisma and WebSocket server.
       </p>
-      <button className="link-button" onClick={() => window.location.reload()} title="Reload and reseed the demo data">
-        Reset data
+      <button type="button" className="btn" onClick={() => window.location.reload()} title="Reload and reseed the demo data">
+        <ArrowCounterClockwise size={16} aria-hidden />
+        Reset demo data
       </button>
-    </div>
+    </aside>
   );
 }
