@@ -11,7 +11,7 @@ import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
 import { StatementPanel } from "./components/StatementPanel";
-import { StatsBar } from "./components/StatsBar";
+import { SummaryBand } from "./components/SummaryBand";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ToastStack } from "./components/ToastStack";
 import { TransferForm } from "./components/TransferForm";
@@ -184,7 +184,7 @@ function App() {
 
       {loadError && <div className="banner-error">{loadError}</div>}
 
-      {accounts.length > 0 && <StatsBar accounts={accounts} />}
+      <SummaryBand accounts={accounts} loaded={loaded} />
 
       {/* Two rows. The first pairs Accounts with the Statement, and the
           Statement is sized to the Accounts panel (see .statement-panel in
