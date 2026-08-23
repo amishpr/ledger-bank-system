@@ -1,13 +1,20 @@
 import type { Toast } from "../useToasts";
 
+// The live region is always in the DOM, even when empty, because screen
+// readers only announce changes to a region that already existed.
 export function ToastStack({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
-  if (toasts.length === 0) return null;
   return (
-    <div className="toast-stack">
+    <div className="toast-stack" role="status" aria-live="polite">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast toast-${toast.kind}`} onClick={() => onDismiss(toast.id)}>
+        <button
+          type="button"
+          key={toast.id}
+          className={`toast toast-${toast.kind}`}
+          onClick={() => onDismiss(toast.id)}
+          title="Dismiss"
+        >
           {toast.message}
-        </div>
+        </button>
       ))}
     </div>
   );

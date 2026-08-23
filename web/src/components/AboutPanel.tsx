@@ -3,7 +3,7 @@
 // the same explanation as someone who finds the repository first.
 export function AboutPanel() {
   return (
-    <div className="panel about-panel">
+    <div className="about">
       <h2>About this project</h2>
       <p>
         Ledger is a small core banking system built to show how a real double entry ledger works under the hood. It has
