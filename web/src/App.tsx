@@ -7,7 +7,6 @@ import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
 import { DemoBanner } from "./components/DemoBanner";
-import { NewAccountForm } from "./components/NewAccountForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
@@ -54,6 +53,9 @@ function App() {
   const [chartHistory, setChartHistory] = useState<StatementLine[]>([]);
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // False until the first accounts request settles either way, which is
+  // what the skeleton rows wait on.
+  const [loaded, setLoaded] = useState(false);
   const [pulsingAccounts, setPulsingAccounts] = useState<Map<string, PulseDirection>>(new Map());
   const [recurringTransfers, setRecurringTransfers] = useState<RecurringTransfer[]>([]);
   const [spendingBreakdown, setSpendingBreakdown] = useState<SpendingBreakdown>(EMPTY_BREAKDOWN);
@@ -66,6 +68,8 @@ function App() {
       setSelectedAccountId((current) => current ?? list.find((a) => a.type === "ASSET")?.id ?? list[0]?.id ?? null);
     } catch {
       setLoadError("Can't reach the ledger API. Is the server running on :4000?");
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -189,13 +193,15 @@ function App() {
       <main className="app-grid">
         <AccountsPanel
           accounts={accounts}
+          loaded={loaded}
           selectedAccountId={selectedAccountId}
           pulsingAccounts={pulsingAccounts}
           onSelect={setSelectedAccountId}
+          onCreated={refreshAccounts}
+          onToast={pushToast}
         />
         <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
         <div className="col">
-          <NewAccountForm onCreated={refreshAccounts} onToast={pushToast} />
           <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
           <RecurringTransfersPanel
             recurringTransfers={recurringTransfers}
