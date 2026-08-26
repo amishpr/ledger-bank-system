@@ -3,14 +3,13 @@ import "./App.css";
 import { api } from "./api/client";
 import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, StatementLine } from "./api/types";
 import { AboutPanel } from "./components/AboutPanel";
+import { AccountDetail } from "./components/AccountDetail";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
-import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
 import { DemoBanner } from "./components/DemoBanner";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
-import { StatementPanel } from "./components/StatementPanel";
 import { SummaryBand } from "./components/SummaryBand";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ToastStack } from "./components/ToastStack";
@@ -26,7 +25,7 @@ const STATEMENT_LIMIT = 40;
 // The balance chart intentionally gets a much larger window than the
 // statement table - a year of seeded activity is the whole point, and a
 // 400-row table would be unusable, but 400 points on a line chart reads
-// fine. See BalanceHistoryChart's footnote: the CSV export, not the
+// fine. See BalanceHistoryChart's caption: the CSV export, not the
 // table, is what guarantees every charted value is reachable elsewhere.
 const CHART_LIMIT = 400;
 const EMPTY_BREAKDOWN: SpendingBreakdown = { byCategory: [], byMonth: [] };
@@ -200,7 +199,14 @@ function App() {
           onCreated={refreshAccounts}
           onToast={pushToast}
         />
-        <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
+        <AccountDetail
+          account={selectedAccount}
+          loaded={loaded}
+          lines={statement}
+          chartLines={chartHistory}
+          onChanged={handlePosted}
+          onToast={pushToast}
+        />
         <div className="col">
           <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
           <RecurringTransfersPanel
@@ -211,7 +217,6 @@ function App() {
           />
         </div>
         <div className="col">
-          <BalanceHistoryChart account={selectedAccount} lines={chartHistory} />
           <SpendingChart breakdown={spendingBreakdown} />
           <ActivityFeed events={events} />
         </div>
