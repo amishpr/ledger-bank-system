@@ -1,93 +1,144 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { SpendingBreakdown, SpendingByCategory } from "../api/types";
+import { shortAccountName } from "../labels";
 import { formatMoney } from "../money";
 
-const CATEGORY_COLOR_VARS = ["--cat-1", "--cat-2", "--cat-3", "--cat-4", "--cat-5"];
+type View = "category" | "month";
 
-function monthLabel(month: string): string {
+// Bar length carries the value and each bar is labeled, so one hue is
+// enough. Past this many categories the smallest ones fold into "Other"
+// so the list stays short.
+const MAX_CATEGORY_ROWS = 5;
+
+function monthLabel(month: string, style: "short" | "long"): string {
   const [year, m] = month.split("-").map(Number);
-  return new Date(year!, m! - 1, 1).toLocaleDateString(undefined, { month: "short", year: "numeric" });
+  const date = new Date(year!, m! - 1, 1);
+  return style === "short"
+    ? date.toLocaleDateString(undefined, { month: "short" })
+    : date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
-// The categorical palette has 5 validated slots (see index.css) - cycling
-// back to slot 1 for a 6th category would make two different categories
-// share a color, so anything past the palette size gets folded into Other
-// instead of cycling. byCategory already arrives
-// sorted by total descending, so folding the smallest entries is just
-// keeping the top 4 and summing whatever's left.
+// byCategory already arrives sorted by total descending, so folding the
+// smallest entries is just keeping the top ones and summing the rest.
 function withOtherFold(categories: SpendingByCategory[]): (SpendingByCategory & { isOther?: boolean })[] {
-  if (categories.length <= CATEGORY_COLOR_VARS.length) return categories;
-  const top = categories.slice(0, CATEGORY_COLOR_VARS.length - 1);
-  const rest = categories.slice(CATEGORY_COLOR_VARS.length - 1);
+  if (categories.length <= MAX_CATEGORY_ROWS) return categories;
+  const top = categories.slice(0, MAX_CATEGORY_ROWS - 1);
+  const rest = categories.slice(MAX_CATEGORY_ROWS - 1);
   const otherTotal = rest.reduce((sum, c) => sum + BigInt(c.totalMinor), 0n);
-  return [
-    ...top,
-    { accountId: "other", accountName: `Other (${rest.length})`, totalMinor: otherTotal.toString(), isOther: true },
-  ];
+  return [...top, { accountId: "other", accountName: `Other (${rest.length})`, totalMinor: otherTotal.toString(), isOther: true }];
 }
 
 export function SpendingChart({ breakdown }: { breakdown: SpendingBreakdown }) {
-  const [view, setView] = useState<"category" | "month">("category");
+  const [view, setView] = useState<View>("category");
+  const [focusMonth, setFocusMonth] = useState<string | null>(null);
+  const id = useId();
 
   const hasData = breakdown.byCategory.length > 0;
+  const total = breakdown.byCategory.reduce((sum, c) => sum + BigInt(c.totalMinor), 0n);
+  const focused = breakdown.byMonth.find((m) => m.month === focusMonth);
+
+  function tab(value: View, label: string) {
+    const selected = view === value;
+    return (
+      <button
+        type="button"
+        role="tab"
+        id={`${id}-${value}`}
+        className="tab"
+        aria-selected={selected}
+        aria-controls={`${id}-panel`}
+        tabIndex={selected ? 0 : -1}
+        onClick={() => setView(value)}
+        // Two tabs, so either arrow key just moves to the other one.
+        onKeyDown={(e) => {
+          if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+          const other = value === "category" ? "month" : "category";
+          setView(other);
+          document.getElementById(`${id}-${other}`)?.focus();
+        }}
+      >
+        {label}
+      </button>
+    );
+  }
 
   return (
-    <div className="panel">
-      <div className="chart-header">
-        <h2>Spending breakdown</h2>
-        <div className="chart-tabs">
-          <button className={view === "category" ? "active" : ""} onClick={() => setView("category")}>
-            By category
-          </button>
-          <button className={view === "month" ? "active" : ""} onClick={() => setView("month")}>
-            By month
-          </button>
+    <section className="panel spend" aria-labelledby={`${id}-title`}>
+      <div className="panel-head">
+        <h2 id={`${id}-title`}>Spending</h2>
+        <div className="tabs" role="tablist" aria-label="Group spending by">
+          {tab("category", "By category")}
+          {tab("month", "By month")}
         </div>
       </div>
 
-      {!hasData && <p className="hint">No expense activity yet.</p>}
+      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${view}`}>
+        {!hasData && (
+          <div className="empty">
+            <strong>No spending yet</strong>
+            Payments into expense accounts are totalled here.
+          </div>
+        )}
 
-      {hasData && view === "category" && (
-        <div className="chart-rows" role="img" aria-label="Total spending by category">
-          {(() => {
-            const rows = withOtherFold(breakdown.byCategory);
-            const max = Math.max(...rows.map((c) => Number(c.totalMinor)));
-            return rows.map((cat, i) => {
-              const pct = max > 0 ? (Number(cat.totalMinor) / max) * 100 : 0;
-              const color = cat.isOther ? "var(--muted)" : `var(${CATEGORY_COLOR_VARS[i]})`;
-              return (
-                <div className="chart-row" key={cat.accountId}>
-                  <span className="chart-row-label">{cat.accountName}</span>
-                  <div className="chart-row-track">
-                    <div className="chart-row-bar" style={{ width: `${pct}%`, background: color }} title={formatMoney(cat.totalMinor)} />
+        {hasData && view === "category" && (
+          <ul className="bars">
+            {(() => {
+              const rows = withOtherFold(breakdown.byCategory);
+              const max = Math.max(...rows.map((c) => Number(c.totalMinor)));
+              return rows.map((cat) => {
+                const pct = max > 0 ? (Number(cat.totalMinor) / max) * 100 : 0;
+                return (
+                  <li className="bar-row" key={cat.accountId}>
+                    <span className="bar-label" title={cat.accountName}>
+                      {shortAccountName(cat.accountName, "EXPENSE")}
+                    </span>
+                    <span>
+                      <span className={`bar${cat.isOther ? " bar-other" : ""}`} style={{ width: `${pct}%` }} />
+                    </span>
+                    <span className="bar-value">{formatMoney(cat.totalMinor)}</span>
+                  </li>
+                );
+              });
+            })()}
+          </ul>
+        )}
+
+        {hasData && view === "month" && (
+          <div className="columns" onMouseLeave={() => setFocusMonth(null)}>
+            {(() => {
+              const max = Math.max(...breakdown.byMonth.map((m) => Number(m.totalMinor)));
+              return breakdown.byMonth.map((m) => {
+                const pct = max > 0 ? (Number(m.totalMinor) / max) * 100 : 0;
+                return (
+                  <div
+                    className="column"
+                    key={m.month}
+                    tabIndex={0}
+                    onMouseEnter={() => setFocusMonth(m.month)}
+                    onFocus={() => setFocusMonth(m.month)}
+                    onBlur={() => setFocusMonth(null)}
+                    aria-label={`${monthLabel(m.month, "long")}: ${formatMoney(m.totalMinor)}`}
+                  >
+                    <div className="column-track">
+                      <div className="column-bar" style={{ height: `${pct}%` }} />
+                    </div>
+                    <span className="column-label" aria-hidden>
+                      {monthLabel(m.month, "short")}
+                    </span>
                   </div>
-                  <span className="chart-row-value">{formatMoney(cat.totalMinor)}</span>
-                </div>
-              );
-            });
-          })()}
+                );
+              });
+            })()}
+          </div>
+        )}
+      </div>
+
+      {hasData && (
+        <div className="spend-foot">
+          <span>{view === "month" && focused ? monthLabel(focused.month, "long") : "Total"}</span>
+          <span className="num">{formatMoney(view === "month" && focused ? focused.totalMinor : total)}</span>
         </div>
       )}
-
-      {hasData && view === "month" && (
-        <div className="chart-columns" role="img" aria-label="Total spending by month">
-          {(() => {
-            const max = Math.max(...breakdown.byMonth.map((m) => Number(m.totalMinor)));
-            return breakdown.byMonth.map((m) => {
-              const pct = max > 0 ? (Number(m.totalMinor) / max) * 100 : 0;
-              return (
-                <div className="chart-column" key={m.month}>
-                  <span className="chart-column-value">{formatMoney(m.totalMinor)}</span>
-                  <div className="chart-column-track">
-                    <div className="chart-column-bar" style={{ height: `${pct}%` }} title={formatMoney(m.totalMinor)} />
-                  </div>
-                  <span className="chart-column-label">{monthLabel(m.month)}</span>
-                </div>
-              );
-            });
-          })()}
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
