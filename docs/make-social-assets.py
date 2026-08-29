@@ -123,7 +123,7 @@ def make_og_image() -> None:
     # title and border, inside the axis labels - so that scaling it to the
     # full 1200px width bleeds it off the left, right and bottom edges with
     # no seam. Those coordinates are specific to docs/screenshot.png.
-    plot = Image.open(SCREENSHOT).convert("RGB").crop((973, 2465, 2368, 2878))
+    plot = Image.open(SCREENSHOT).convert("RGB").crop((830, 1006, 2448, 1300))
     plot_h = round(plot.height * W / plot.width)
     plot = plot.resize((W, plot_h), Image.LANCZOS)
 
