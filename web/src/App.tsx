@@ -154,6 +154,10 @@ function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#dashboard">
+        Skip to dashboard
+      </a>
+
       <header className="app-header">
         <div className="brand">
           {/* The same file the browser tab uses. BASE_URL rather than a
@@ -161,35 +165,37 @@ function App() {
               subdirectory, where a root-relative path would 404. The alt
               is empty on purpose: the <h1> beside it already says Ledger,
               so naming the logo too would just repeat it. */}
-          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
-          <div>
-            <h1>Ledger</h1>
-            <p className="tagline">A double-entry core-banking ledger with an append-only, idempotent transaction API.</p>
-          </div>
+          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={28} height={28} />
+          <h1>Ledger</h1>
+          <p className="tagline">Double-entry core banking with an append-only, idempotent API</p>
         </div>
         <div className="header-actions">
-          <div className={`ws-status ws-${wsStatus}`}>
-            <span className="ws-dot" />
-            {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Disconnected"}
+          <div className={`ws-status ws-${wsStatus}`} role="status">
+            <span className="ws-dot" aria-hidden />
+            {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Offline"}
           </div>
           <RepoLink />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
 
-      <AboutPanel />
+      <div className="intro">
+        <AboutPanel />
+        <DemoBanner />
+      </div>
 
-      <DemoBanner />
-
-      {loadError && <div className="banner-error">{loadError}</div>}
+      {loadError && (
+        <div className="banner-error" role="alert">
+          {loadError}
+        </div>
+      )}
 
       <SummaryBand accounts={accounts} loaded={loaded} />
 
-      {/* Two rows. The first pairs Accounts with the Statement, and the
-          Statement is sized to the Accounts panel (see .statement-panel in
-          App.css). The second holds the forms on the left and the charts
-          and live feed on the right. */}
-      <main className="app-grid">
+      {/* Named grid areas in App.css place these. Accounts sets the height
+          of the first row and the account detail beside it scrolls its
+          statement to match. */}
+      <main id="dashboard" className="layout">
         <AccountsPanel
           accounts={accounts}
           loaded={loaded}
@@ -207,18 +213,10 @@ function App() {
           onChanged={handlePosted}
           onToast={pushToast}
         />
-        <div className="col">
-          <MoveMoneyForm accounts={accounts} onPosted={handlePosted} onScheduled={refreshRecurring} onToast={pushToast} />
-          <RecurringTransfersPanel
-            recurringTransfers={recurringTransfers}
-            onChanged={refreshRecurring}
-            onToast={pushToast}
-          />
-        </div>
-        <div className="col">
-          <SpendingChart breakdown={spendingBreakdown} />
-          <ActivityFeed events={events} />
-        </div>
+        <MoveMoneyForm accounts={accounts} onPosted={handlePosted} onScheduled={refreshRecurring} onToast={pushToast} />
+        <SpendingChart breakdown={spendingBreakdown} />
+        <ActivityFeed events={events} />
+        <RecurringTransfersPanel recurringTransfers={recurringTransfers} onChanged={refreshRecurring} onToast={pushToast} />
       </main>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
