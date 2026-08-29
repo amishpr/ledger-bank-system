@@ -7,13 +7,13 @@ import { AccountDetail } from "./components/AccountDetail";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
 import { DemoBanner } from "./components/DemoBanner";
+import { MoveMoneyForm } from "./components/MoveMoneyForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
 import { SummaryBand } from "./components/SummaryBand";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ToastStack } from "./components/ToastStack";
-import { TransferForm } from "./components/TransferForm";
 import { entryIncreasesBalance } from "./ledgerMath";
 import { useLedgerSocket } from "./useLedgerSocket";
 import { useTheme } from "./useTheme";
@@ -208,10 +208,9 @@ function App() {
           onToast={pushToast}
         />
         <div className="col">
-          <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
+          <MoveMoneyForm accounts={accounts} onPosted={handlePosted} onScheduled={refreshRecurring} onToast={pushToast} />
           <RecurringTransfersPanel
             recurringTransfers={recurringTransfers}
-            accounts={accounts}
             onChanged={refreshRecurring}
             onToast={pushToast}
           />
