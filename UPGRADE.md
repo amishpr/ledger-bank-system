@@ -260,3 +260,39 @@ The goal is the fewest edit and verify cycles.
    with the same DOM audit (em dashes, overflow, small targets, console
    errors). Then a scripted smoke test: select an account, post a
    transfer, schedule one, reverse a row, switch tabs and theme.
+
+## Result
+
+All of the plan above is in place on `ui-upgrade`.
+
+| Measure (demo data, 1440px) | Before | After |
+| --- | --- | --- |
+| Token pairs failing AA | 9 of 10 | 0 of 19 |
+| Controls under 24px | 46 | 0 |
+| Visible em dashes | 2 | 0 |
+| Hues on screen | about 12 | 1 accent, 3 semantic, 1 data |
+| Page height | 2016px | 1651px |
+| Console errors | 0 | 0 |
+
+Checks run: `tsc -b` clean, `vitest` 16 of 16, `oxlint` shows only the two
+`set-state-in-effect` warnings that were already in `App.tsx`, and the
+production demo build succeeds. A Playwright 1.48 smoke test passed all 31
+checks at 1440px and at 390px with reduced motion on: skip link, account
+selection with `aria-current`, posting, the large-amount notice, scheduling,
+pause, inline validation, reverse, tabs by click and arrow key, new
+account, theme toggle and the chart tooltip.
+
+### Still open
+
+- **Link-preview card not regenerated.** `docs/screenshot.png` now shows
+  the new UI (dark, 1280px at 2x, full page, as before), and the chart crop
+  in `docs/make-social-assets.py` points at the new plot area. The
+  committed `web/public/og-image.png` still uses the old chart until
+  someone runs the script. Its color constants also still hold the old
+  palette, apart from the background, which did not change.
+- **Accent hue.** The indigo stays because it is the logo's color. If the
+  brand is open to change, a non-violet accent would move further from the
+  generic look; that would mean a new favicon too.
+- **Balance chart keyboard access.** The tooltip is still pointer-only. The
+  statement and CSV export carry the same values, but arrow-key stepping
+  through points would be a good follow-up.
