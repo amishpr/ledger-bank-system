@@ -1,10 +1,12 @@
 node_modules/
 dist/
+target/
+.dev-data/
 .env
 !.env.example
 
-# SQLite dev/test databases (schema lives in prisma/migrations instead)
+.DS_Store
+
+# Local databases
 *.db
 *.db-journal
-
-.DS_Store
