@@ -1,0 +1,5 @@
+io.github.amishpr.ledger.platform.PlatformAutoConfiguration
+io.github.amishpr.ledger.platform.web.PlatformWebAutoConfiguration
+io.github.amishpr.ledger.platform.outbox.OutboxAutoConfiguration
+io.github.amishpr.ledger.platform.kafka.KafkaConsumerAutoConfiguration
+io.github.amishpr.ledger.platform.openapi.OpenApiAutoConfiguration
