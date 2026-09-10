@@ -1,0 +1,2 @@
+io.github.amishpr.ledger.platform.PlatformAutoConfiguration
+io.github.amishpr.ledger.platform.web.PlatformWebAutoConfiguration
