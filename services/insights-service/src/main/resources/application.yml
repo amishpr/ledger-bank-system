@@ -1,0 +1,63 @@
+spring:
+  application:
+    name: insights-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${INSIGHTS_DB_URL:jdbc:postgresql://localhost:5432/insights}
+    username: ${INSIGHTS_DB_USER:ledger}
+    password: ${INSIGHTS_DB_PASSWORD:ledger}
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 5000
+  flyway:
+    connect-retries: 30
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      # A brand new consumer group starts from the beginning of the topic,
+      # which is how the read model is built from scratch.
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      ack-mode: record
+      observation-enabled: true
+    template:
+      observation-enabled: true
+
+server:
+  port: ${PORT:8083}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,db
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    tags:
+      # On every meter, so dashboards can split any metric by service.
+      service: insights-service
+
+ledger:
+  openapi:
+    server-url: ${PUBLIC_API_URL:http://localhost:4000}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    org.apache.kafka: WARN

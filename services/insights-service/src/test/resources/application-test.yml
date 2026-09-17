@@ -1,0 +1,6 @@
+ledger:
+  outbox:
+    poll-interval: 100ms
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
