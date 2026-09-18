@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: notification-service
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      enable-auto-commit: false
+    listener:
+      ack-mode: record
+      observation-enabled: true
+
+server:
+  port: ${PORT:8084}
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    tags:
+      # On every meter, so dashboards can split any metric by service.
+      service: notification-service
+
+ledger:
+  kafka:
+    consumer:
+      # A live notification nobody received is not worth parking in a dead
+      # letter topic; the dashboard reloads from REST when it reconnects.
+      dead-letter-enabled: false
+      max-retries: 1
+
+notification:
+  allowed-origins: ${NOTIFICATION_ALLOWED_ORIGINS:http://localhost:*}
+
+logging:
+  level:
+    org.apache.kafka: WARN
