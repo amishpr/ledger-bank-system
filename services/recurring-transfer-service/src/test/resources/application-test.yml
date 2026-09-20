@@ -1,0 +1,12 @@
+ledger:
+  outbox:
+    poll-interval: 100ms
+spring:
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+recurring:
+  zone: America/New_York
+  sweep:
+    # Tests call the sweep themselves rather than racing a timer.
+    interval: PT1H
+    initial-delay: PT1H
