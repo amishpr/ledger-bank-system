@@ -46,9 +46,15 @@ export interface StatementLine {
   createdAt: string;
 }
 
+// An RFC 9457 Problem Details body. `code` is the stable machine readable
+// part; `error` and `message` are what the first version of the API sent.
 export interface ApiError {
-  error: string;
-  message: string;
+  code?: string;
+  detail?: string;
+  status?: number;
+  traceId?: string;
+  error?: string;
+  message?: string;
 }
 
 export type LedgerEvent =

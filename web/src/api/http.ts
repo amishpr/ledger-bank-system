@@ -3,7 +3,8 @@ import { saveBlob } from "./download";
 import { ApiRequestError } from "./errors";
 import type { Account, ApiError, PostResult, RecurringTransfer, SpendingBreakdown, StatementLine } from "./types";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+// The API gateway, which routes each path to the service that owns it.
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api/v1";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -11,8 +12,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json", ...init?.headers },
   });
   if (!res.ok) {
+    // Errors are RFC 9457 Problem Details with a stable `code`. The older
+    // `error` and `message` fields are still read in case an older API
+    // answers.
     const body = (await res.json().catch(() => null)) as ApiError | null;
-    throw new ApiRequestError(body?.error ?? "UNKNOWN_ERROR", body?.message ?? `Request failed (${res.status})`);
+    throw new ApiRequestError(
+      body?.code ?? body?.error ?? "UNKNOWN_ERROR",
+      body?.detail ?? body?.message ?? `Request failed (${res.status})`,
+    );
   }
   if (res.status === 204) {
     return undefined as T;
@@ -28,7 +35,12 @@ export const httpApi: LedgerApi = {
   getStatement: (accountId, limit = 25) =>
     request<StatementLine[]>(`/accounts/${accountId}/statement?limit=${limit}`),
 
-  postTransaction: (input) => request<PostResult>("/transactions", { method: "POST", body: JSON.stringify(input) }),
+  postTransaction: ({ idempotencyKey, ...body }) =>
+    request<PostResult>("/transactions", {
+      method: "POST",
+      headers: { "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(body),
+    }),
 
   reverseTransaction: (transactionId, note) =>
     request<PostResult>(`/transactions/${transactionId}/reverse`, { method: "POST", body: JSON.stringify({ note }) }),
