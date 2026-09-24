@@ -1,6 +1,6 @@
 import type { AccountType, EntryDirection } from "./api/types";
 
-// Mirrors server/src/ledger/types.ts#signedDelta - kept here only for
+// Mirrors AccountType#signedDelta in the ledger service - kept here only for
 // display purposes (which way to color/sign an entry), never to compute a
 // balance the server hasn't already confirmed.
 const DEBIT_NORMAL_TYPES = new Set<AccountType>(["ASSET", "EXPENSE"]);

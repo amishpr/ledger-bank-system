@@ -6,9 +6,9 @@ export function AboutPanel() {
     <div className="about">
       <h2>About this project</h2>
       <p>
-        Ledger is a small core banking system built to show how a real double entry ledger works under the hood. It has
-        a Node and TypeScript API backed by a Prisma database, and a React dashboard that updates in real time as money
-        moves between accounts.
+        Ledger is a small core banking system built to show how a real double entry ledger works under the hood. Its
+        backend is a set of Java and Spring Boot microservices that talk to each other over REST and Kafka, backed by
+        Postgres, and a React dashboard updates in real time as money moves between accounts.
       </p>
       <p>
         The project is not trying to be a full bank. It is trying to get the hard parts right: every transaction has to

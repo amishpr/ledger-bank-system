@@ -1,10 +1,10 @@
 import type { Account, PostResult, RecurrenceInterval, RecurringTransfer, SpendingBreakdown, StatementLine } from "./types";
 
 // Everything the dashboard is allowed to ask a backend for. There are two
-// implementations: the HTTP client that talks to the Express API, and the
-// in-browser demo backend used by the hosted build. No component knows
-// which one it has, which is the only reason a static host can run this
-// app at all.
+// implementations: the HTTP client that talks to the Spring Boot services
+// through the API gateway, and the in-browser demo backend used by the
+// hosted build. No component knows which one it has, which is the only
+// reason a static host can run this app at all.
 export interface LedgerApi {
   listAccounts(): Promise<Account[]>;
 

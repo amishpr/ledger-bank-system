@@ -2,7 +2,7 @@ name: Deploy demo to GitHub Pages
 
 # Builds the in-browser demo (web/src/demo) and publishes it to GitHub
 # Pages. Only the frontend is deployed, because Pages serves static files
-# and the Express API needs a running Node process. See README.md.
+# and the Spring Boot services need running JVMs, Postgres and Kafka. See README.md.
 #
 # One-time setup in the repository: Settings, then Pages, then set
 # "Source" to "GitHub Actions". Without that this workflow cannot deploy.

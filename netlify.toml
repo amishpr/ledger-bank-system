@@ -4,8 +4,8 @@
   publish = "dist"
 
 # Netlify serves static files only, so the deployed build runs the
-# in-browser demo backend (web/src/demo) instead of calling the Express
-# API. See README.md for what that does and does not cover.
+# in-browser demo backend (web/src/demo) instead of calling the Spring
+# Boot services. See README.md for what that does and does not cover.
 [build.environment]
   VITE_DEMO = "true"
 
