@@ -1,0 +1,25 @@
+# Only the gateway is exposed. Every other service is reachable inside the
+# cluster alone. The timeouts keep long-lived dashboard WebSockets open.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.ledger.example.com]
+      secretName: ledger-api-tls
+  rules:
+    - host: api.ledger.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  name: http

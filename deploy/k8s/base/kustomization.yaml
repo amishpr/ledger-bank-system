@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ledger
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: ledger
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - ledger-service.yaml
+  - recurring-transfer-service.yaml
+  - insights-service.yaml
+  - notification-service.yaml
+  - api-gateway.yaml
+  - policies.yaml
+  - ingress.yaml
+images:
+  # CI tags images with the commit SHA; an overlay pins the one to deploy.
+  - name: ghcr.io/amishpr/ledger/ledger-service
+    newTag: latest
+  - name: ghcr.io/amishpr/ledger/recurring-transfer-service
+    newTag: latest
+  - name: ghcr.io/amishpr/ledger/insights-service
+    newTag: latest
+  - name: ghcr.io/amishpr/ledger/notification-service
+    newTag: latest
+  - name: ghcr.io/amishpr/ledger/api-gateway
+    newTag: latest

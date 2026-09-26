@@ -1,0 +1,15 @@
+# Settings every service shares. Postgres and Kafka are expected to be
+# managed services (for example Amazon RDS and MSK); point these at them.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ledger-config
+data:
+  POSTGRES_HOST: postgres.ledger-data.svc.cluster.local
+  KAFKA_BOOTSTRAP_SERVERS: kafka.ledger-data.svc.cluster.local:9092
+  PUBLIC_API_URL: https://ledger.example.com
+  CORS_ORIGIN: https://ledger.example.com
+  NOTIFICATION_ALLOWED_ORIGINS: https://ledger.example.com
+  MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT: http://otel-collector.observability.svc.cluster.local:4318/v1/traces
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.1"
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError
