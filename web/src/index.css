@@ -1,50 +1,58 @@
 :root {
-  /* OMS/EMS trading-terminal layout (FlexTrade/Bloomberg-style density
-     and structure) with a brand palette on top: a dark navy surface
-     (matching the supplied brand palette's dark theme background, not
-     flat black), high-contrast off-white text, teal for up/increase,
-     magenta for down/decrease, amber reserved for warnings. This is now
-     the default - the light palette below is still available through
-     the theme toggle, but the terminal look is what the app opens with. */
-  --text: #a7b0c0;
-  --text-h: #eef1f6;
+  /* Dark is the default theme. The navy background is the brand color
+     and stays; the rest of the palette is tuned so every text pair
+     clears WCAG AA (4.5:1) on both --surface and --bg. See UPGRADE.md
+     for the measured ratios.
+
+     Color rules the components follow:
+     - --accent means "you can click this". Nothing else uses it.
+     - --positive and --negative only mean a balance went up or down.
+     - --warning only means "look at this" (large amounts, demo mode).
+     - --data is the single hue for chart marks. */
   --bg: #1a1f35;
-  --panel-bg: #242a47;
-  --panel-bg-subtle: #1e2440;
-  --border: #363c5e;
-  --accent: #6d6fff;
-  --accent-strong: #8f91ff;
-  --accent-bg: rgba(109, 111, 255, 0.16);
+  --surface: #20263f;
+  --surface-2: #272e4b;
+  --surface-sunken: #1c2138;
+  --line: #2f3656;
+  --line-strong: #3d4568;
+
+  --text: #b4bccb;
+  --text-h: #eef1f6;
+  --muted: #8f97ab;
+
+  --accent: #9597f0;
+  --accent-soft: rgba(149, 151, 240, 0.13);
+  --accent-solid: #5d60e0;
+  --accent-solid-hover: #6b6ef0;
+  --on-accent: #fbfbff;
+
   --positive: #19ceb3;
-  --positive-bg: rgba(25, 206, 179, 0.14);
-  --negative: #d62b70;
-  --negative-bg: rgba(214, 43, 112, 0.16);
+  --positive-soft: rgba(25, 206, 179, 0.16);
+  --negative: #f0609a;
+  --negative-soft: rgba(240, 96, 154, 0.16);
   --warning: #f2b400;
-  --warning-bg: rgba(242, 180, 0, 0.13);
-  --muted: #626b7a;
-  --shadow: rgba(0, 0, 0, 0.5) 0 1px 2px, rgba(0, 0, 0, 0.35) 0 6px 16px;
-  --stripe: rgba(255, 255, 255, 0.02);
+  --warning-soft: rgba(242, 180, 0, 0.12);
 
-  --type-asset: #6d6fff;
-  --type-liability: #f2b400;
-  --type-equity: #b98af5;
-  --type-revenue: #19ceb3;
-  --type-expense: #d62b70;
+  --data: #7477d6;
+  --skeleton: rgba(238, 241, 246, 0.07);
+  /* Tinted to the navy rather than plain black, so the one floating
+     element (toasts) sits in the same light as the page. */
+  --shadow-float: 0 12px 32px rgba(8, 10, 26, 0.5), 0 2px 6px rgba(8, 10, 26, 0.35);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%238f97ab' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
 
-  /* Categorical chart palette, fixed order, validated for colorblind and
-     normal-vision separation on both surfaces.
-     Used for the spending-by-category chart; assign in this order,
-     never cycle past 5 without folding extra categories into "Other". */
-  --cat-1: #3987e5;
-  --cat-2: #d95926;
-  --cat-3: #199e70;
-  --cat-4: #c98500;
-  --cat-5: #d55181;
+  /* Controls get the small radius, containers the large one. */
+  --radius-sm: 4px;
+  --radius: 8px;
 
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  /* The whole z-index scale. */
+  --z-sticky: 1;
+  --z-toast: 50;
+  --z-skip: 60;
 
-  font: 13px/1.5 var(--sans);
+  --sans: "Geist Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono Variable", ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  font: 14px/1.5 var(--sans);
   color-scheme: dark;
   color: var(--text);
   background: var(--bg);
@@ -54,39 +62,35 @@
 }
 
 :root[data-theme="light"] {
-  /* The original light palette, kept behind the toggle for anyone who
-     wants it - the app just no longer opens on it by default. */
   color-scheme: light;
-  --text: #4a5268;
-  --text-h: #101828;
-  --bg: #f4f6fb;
-  --panel-bg: #ffffff;
-  --panel-bg-subtle: #fafbfd;
-  --border: #e1e5ee;
-  --accent: #418af2;
-  --accent-strong: #2c6fcf;
-  --accent-bg: rgba(65, 138, 242, 0.1);
-  --positive: #0ae596;
-  --positive-bg: rgba(10, 229, 150, 0.12);
-  --negative: #e84275;
-  --negative-bg: rgba(232, 66, 117, 0.11);
-  --warning: #a45c0f;
-  --warning-bg: rgba(164, 92, 15, 0.1);
-  --muted: #7a8299;
-  --shadow: rgba(16, 24, 40, 0.04) 0 1px 2px, rgba(16, 24, 40, 0.06) 0 8px 24px;
-  --stripe: rgba(16, 24, 40, 0.015);
+  --bg: #f3f4f8;
+  --surface: #fcfcfd;
+  --surface-2: #eef0f6;
+  --surface-sunken: #f7f8fb;
+  --line: #e1e4ec;
+  --line-strong: #cfd3df;
 
-  --type-asset: #418af2;
-  --type-liability: #a45c0f;
-  --type-equity: #6b3fa0;
-  --type-revenue: #0ae596;
-  --type-expense: #e84275;
+  --text: #3d4457;
+  --text-h: #121726;
+  --muted: #5f6678;
 
-  --cat-1: #2a78d6;
-  --cat-2: #eb6834;
-  --cat-3: #1baf7a;
-  --cat-4: #eda100;
-  --cat-5: #e87ba4;
+  --accent: #4a4cc9;
+  --accent-soft: rgba(74, 76, 201, 0.09);
+  --accent-solid: #4f52d6;
+  --accent-solid-hover: #4346c4;
+  --on-accent: #fbfbff;
+
+  --positive: #0e7c6b;
+  --positive-soft: rgba(14, 124, 107, 0.12);
+  --negative: #c2255f;
+  --negative-soft: rgba(194, 37, 95, 0.1);
+  --warning: #9a5b0c;
+  --warning-soft: rgba(154, 91, 12, 0.1);
+
+  --data: #6d70d0;
+  --skeleton: rgba(18, 23, 38, 0.07);
+  --shadow-float: 0 12px 32px rgba(40, 46, 80, 0.14), 0 2px 6px rgba(40, 46, 80, 0.08);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none' stroke='%235f6678' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5'/%3E%3C/svg%3E");
 }
 
 * {
@@ -95,16 +99,18 @@
 
 body {
   margin: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
 }
 
 h1,
-h2 {
+h2,
+h3 {
   font-family: var(--sans);
   font-weight: 600;
   color: var(--text-h);
-  margin: 0 0 4px;
+  margin: 0;
+  text-wrap: balance;
 }
 
 p {
@@ -112,10 +118,44 @@ p {
 }
 
 button {
-  font-family: inherit;
+  font: inherit;
   cursor: pointer;
 }
 
 table {
   border-collapse: collapse;
+}
+
+/* One focus ring for everything a keyboard can reach. Inputs swap it
+   for a border and halo in App.css. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

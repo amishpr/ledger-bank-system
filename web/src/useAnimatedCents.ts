@@ -7,10 +7,18 @@ import { useEffect, useRef, useState } from "react";
 export function useAnimatedCents(target: bigint, duration = 650): bigint {
   const [display, setDisplay] = useState(target);
   const fromRef = useRef(target);
+  const reduceMotion = prefersReducedMotion();
 
   useEffect(() => {
     const from = fromRef.current;
     if (from === target) return;
+
+    // With reduced motion the number just changes, no count-up. The
+    // return below hands back the target directly in that case.
+    if (reduceMotion) {
+      fromRef.current = target;
+      return;
+    }
 
     const fromNum = Number(from);
     const toNum = Number(target);
@@ -31,7 +39,11 @@ export function useAnimatedCents(target: bigint, duration = 650): bigint {
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [target, duration]);
+  }, [target, duration, reduceMotion]);
 
-  return display;
+  return reduceMotion ? target : display;
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
 }

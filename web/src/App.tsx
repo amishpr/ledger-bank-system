@@ -3,19 +3,17 @@ import "./App.css";
 import { api } from "./api/client";
 import type { Account, LedgerEvent, RecurringTransfer, SpendingBreakdown, StatementLine } from "./api/types";
 import { AboutPanel } from "./components/AboutPanel";
+import { AccountDetail } from "./components/AccountDetail";
 import { AccountsPanel } from "./components/AccountsPanel";
 import { ActivityFeed } from "./components/ActivityFeed";
-import { BalanceHistoryChart } from "./components/BalanceHistoryChart";
 import { DemoBanner } from "./components/DemoBanner";
-import { NewAccountForm } from "./components/NewAccountForm";
+import { MoveMoneyForm } from "./components/MoveMoneyForm";
 import { RecurringTransfersPanel } from "./components/RecurringTransfersPanel";
 import { RepoLink } from "./components/RepoLink";
 import { SpendingChart } from "./components/SpendingChart";
-import { StatementPanel } from "./components/StatementPanel";
-import { StatsBar } from "./components/StatsBar";
+import { SummaryBand } from "./components/SummaryBand";
 import { ThemeToggle } from "./components/ThemeToggle";
 import { ToastStack } from "./components/ToastStack";
-import { TransferForm } from "./components/TransferForm";
 import { entryIncreasesBalance } from "./ledgerMath";
 import { useLedgerSocket } from "./useLedgerSocket";
 import { useTheme } from "./useTheme";
@@ -27,7 +25,7 @@ const STATEMENT_LIMIT = 40;
 // The balance chart intentionally gets a much larger window than the
 // statement table - a year of seeded activity is the whole point, and a
 // 400-row table would be unusable, but 400 points on a line chart reads
-// fine. See BalanceHistoryChart's footnote: the CSV export, not the
+// fine. See BalanceHistoryChart's caption: the CSV export, not the
 // table, is what guarantees every charted value is reachable elsewhere.
 const CHART_LIMIT = 400;
 const EMPTY_BREAKDOWN: SpendingBreakdown = { byCategory: [], byMonth: [] };
@@ -54,6 +52,9 @@ function App() {
   const [chartHistory, setChartHistory] = useState<StatementLine[]>([]);
   const [events, setEvents] = useState<LedgerEvent[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // False until the first accounts request settles either way, which is
+  // what the skeleton rows wait on.
+  const [loaded, setLoaded] = useState(false);
   const [pulsingAccounts, setPulsingAccounts] = useState<Map<string, PulseDirection>>(new Map());
   const [recurringTransfers, setRecurringTransfers] = useState<RecurringTransfer[]>([]);
   const [spendingBreakdown, setSpendingBreakdown] = useState<SpendingBreakdown>(EMPTY_BREAKDOWN);
@@ -66,6 +67,8 @@ function App() {
       setSelectedAccountId((current) => current ?? list.find((a) => a.type === "ASSET")?.id ?? list[0]?.id ?? null);
     } catch {
       setLoadError("Can't reach the ledger API. Is the server running on :4000?");
+    } finally {
+      setLoaded(true);
     }
   }, []);
 
@@ -151,6 +154,10 @@ function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#dashboard">
+        Skip to dashboard
+      </a>
+
       <header className="app-header">
         <div className="brand">
           {/* The same file the browser tab uses. BASE_URL rather than a
@@ -158,57 +165,58 @@ function App() {
               subdirectory, where a root-relative path would 404. The alt
               is empty on purpose: the <h1> beside it already says Ledger,
               so naming the logo too would just repeat it. */}
-          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={32} height={32} />
-          <div>
-            <h1>Ledger</h1>
-            <p className="tagline">A double-entry core-banking ledger with an append-only, idempotent transaction API.</p>
-          </div>
+          <img className="brand-mark" src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={28} height={28} />
+          <h1>Ledger</h1>
+          <p className="tagline">Double-entry core banking with an append-only, idempotent API</p>
         </div>
         <div className="header-actions">
-          <div className={`ws-status ws-${wsStatus}`}>
-            <span className="ws-dot" />
-            {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Disconnected"}
+          <div className={`ws-status ws-${wsStatus}`} role="status">
+            <span className="ws-dot" aria-hidden />
+            {wsStatus === "open" ? "Live" : wsStatus === "connecting" ? "Connecting…" : "Offline"}
           </div>
           <RepoLink />
           <ThemeToggle theme={theme} onToggle={toggleTheme} />
         </div>
       </header>
 
-      <AboutPanel />
+      <div className="intro">
+        <AboutPanel />
+        <DemoBanner />
+      </div>
 
-      <DemoBanner />
+      {loadError && (
+        <div className="banner-error" role="alert">
+          {loadError}
+        </div>
+      )}
 
-      {loadError && <div className="banner-error">{loadError}</div>}
+      <SummaryBand accounts={accounts} loaded={loaded} />
 
-      {accounts.length > 0 && <StatsBar accounts={accounts} />}
-
-      {/* Two rows. The first pairs Accounts with the Statement, and the
-          Statement is sized to the Accounts panel (see .statement-panel in
-          App.css). The second holds the forms on the left and the charts
-          and live feed on the right. */}
-      <main className="app-grid">
+      {/* Named grid areas in App.css place these. Accounts sets the height
+          of the first row and the account detail beside it scrolls its
+          statement to match. */}
+      <main id="dashboard" className="layout">
         <AccountsPanel
           accounts={accounts}
+          loaded={loaded}
           selectedAccountId={selectedAccountId}
           pulsingAccounts={pulsingAccounts}
           onSelect={setSelectedAccountId}
+          onCreated={refreshAccounts}
+          onToast={pushToast}
         />
-        <StatementPanel account={selectedAccount} lines={statement} onChanged={handlePosted} onToast={pushToast} />
-        <div className="col">
-          <NewAccountForm onCreated={refreshAccounts} onToast={pushToast} />
-          <TransferForm accounts={accounts} onPosted={handlePosted} onToast={pushToast} />
-          <RecurringTransfersPanel
-            recurringTransfers={recurringTransfers}
-            accounts={accounts}
-            onChanged={refreshRecurring}
-            onToast={pushToast}
-          />
-        </div>
-        <div className="col">
-          <BalanceHistoryChart account={selectedAccount} lines={chartHistory} />
-          <SpendingChart breakdown={spendingBreakdown} />
-          <ActivityFeed events={events} />
-        </div>
+        <AccountDetail
+          account={selectedAccount}
+          loaded={loaded}
+          lines={statement}
+          chartLines={chartHistory}
+          onChanged={handlePosted}
+          onToast={pushToast}
+        />
+        <MoveMoneyForm accounts={accounts} onPosted={handlePosted} onScheduled={refreshRecurring} onToast={pushToast} />
+        <SpendingChart breakdown={spendingBreakdown} />
+        <ActivityFeed events={events} />
+        <RecurringTransfersPanel recurringTransfers={recurringTransfers} onChanged={refreshRecurring} onToast={pushToast} />
       </main>
 
       <ToastStack toasts={toasts} onDismiss={dismissToast} />

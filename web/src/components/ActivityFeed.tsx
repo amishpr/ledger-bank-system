@@ -1,11 +1,12 @@
+import { Pulse } from "@phosphor-icons/react";
 import type { LedgerEvent } from "../api/types";
 import { isLargeAmount } from "../flags";
 import { formatMoney } from "../money";
 
-const TAG_LABEL: Record<string, string> = {
-  "transaction.posted": "Posted",
-  "transaction.reversed": "Reversal",
-  "recurring.executed": "Auto",
+const TAG: Record<string, { label: string; className: string }> = {
+  "transaction.posted": { label: "Posted", className: "feed-tag" },
+  "transaction.reversed": { label: "Reversal", className: "feed-tag feed-tag-reversal" },
+  "recurring.executed": { label: "Scheduled", className: "feed-tag" },
 };
 
 export function ActivityFeed({ events }: { events: LedgerEvent[] }) {
@@ -14,32 +15,41 @@ export function ActivityFeed({ events }: { events: LedgerEvent[] }) {
   );
 
   return (
-    <div className="panel">
-      <h2>Live activity</h2>
-      {renderable.length === 0 && <p className="hint">Transactions posted anywhere will appear here in real time.</p>}
-      <ul className="activity-feed">
-        {renderable.map((event) => {
-          const total = event.transaction.entries
-            .filter((e) => e.direction === "DEBIT")
-            .reduce((sum, e) => sum + BigInt(e.amountMinor), 0n);
-          return (
-            <li key={event.transaction.id + event.type} className="activity-item">
-              <span className={`activity-tag ${event.type === "transaction.reversed" ? "reversed" : event.type === "recurring.executed" ? "auto" : "posted"}`}>
-                {TAG_LABEL[event.type]}
-              </span>
-              <span className="activity-description">
-                {event.transaction.description}
-                {isLargeAmount(total) && (
-                  <span className="flag-badge" title="Above the demo large-transaction threshold of $1,000">
-                    Large
-                  </span>
-                )}
-              </span>
-              <span className="activity-amount">{formatMoney(total)}</span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    <section className="panel feed" aria-labelledby="feed-title">
+      <div className="panel-head">
+        <h2 id="feed-title">Live activity</h2>
+      </div>
+
+      {renderable.length === 0 ? (
+        <div className="empty">
+          <Pulse size={20} aria-hidden />
+          <strong>Waiting for activity</strong>
+          Post a transfer and it shows up here the moment it lands, along with anything the scheduler runs.
+        </div>
+      ) : (
+        <ul className="feed-list">
+          {renderable.map((event) => {
+            const total = event.transaction.entries
+              .filter((e) => e.direction === "DEBIT")
+              .reduce((sum, e) => sum + BigInt(e.amountMinor), 0n);
+            const tag = TAG[event.type]!;
+            return (
+              <li key={event.transaction.id + event.type} className="feed-item">
+                <span className={tag.className}>{tag.label}</span>
+                <span className="feed-desc" title={event.transaction.description}>
+                  {event.transaction.description}
+                  {isLargeAmount(total) && (
+                    <span className="flag" title="Above the demo large-transaction threshold of $1,000">
+                      Large
+                    </span>
+                  )}
+                </span>
+                <span className="feed-amount">{formatMoney(total)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
