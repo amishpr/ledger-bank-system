@@ -1,0 +1,31 @@
+# Weekly dependency updates, grouped so they arrive as a handful of pull
+# requests instead of dozens.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /services
+    schedule:
+      interval: weekly
+    groups:
+      spring:
+        patterns: ["org.springframework*", "io.micrometer*", "io.opentelemetry*"]
+      everything-else:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      web:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /services
+    schedule:
+      interval: weekly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
