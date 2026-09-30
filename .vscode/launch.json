@@ -2,38 +2,51 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "node",
+      "type": "java",
       "request": "launch",
-      "name": "Debug API Server",
-      "runtimeExecutable": "${workspaceFolder}/server/node_modules/.bin/tsx",
-      "runtimeArgs": ["src/index.ts"],
-      "cwd": "${workspaceFolder}/server",
+      "name": "Debug Ledger service",
+      "mainClass": "io.github.amishpr.ledger.accounting.LedgerServiceApplication",
+      "projectName": "ledger-service",
+      "cwd": "${workspaceFolder}/services",
       "console": "integratedTerminal",
-      "skipFiles": ["<node_internals>/**"]
+      "args": "--ledger.seed.enabled=true"
     },
     {
-      "type": "node",
+      "type": "java",
       "request": "launch",
-      "name": "Debug Server Tests (all)",
-      "program": "${workspaceFolder}/server/node_modules/vitest/vitest.mjs",
-      "args": ["run"],
-      "cwd": "${workspaceFolder}/server",
+      "name": "Debug Recurring transfer service",
+      "mainClass": "io.github.amishpr.ledger.recurring.RecurringTransferServiceApplication",
+      "projectName": "recurring-transfer-service",
+      "cwd": "${workspaceFolder}/services",
       "console": "integratedTerminal",
-      "smartStep": true,
-      "autoAttachChildProcesses": true,
-      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+      "args": "--recurring.seed.enabled=true"
     },
     {
-      "type": "node",
+      "type": "java",
       "request": "launch",
-      "name": "Debug Server Tests (current file)",
-      "program": "${workspaceFolder}/server/node_modules/vitest/vitest.mjs",
-      "args": ["run", "${relativeFile}"],
-      "cwd": "${workspaceFolder}/server",
-      "console": "integratedTerminal",
-      "smartStep": true,
-      "autoAttachChildProcesses": true,
-      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+      "name": "Debug Insights service",
+      "mainClass": "io.github.amishpr.ledger.insights.InsightsServiceApplication",
+      "projectName": "insights-service",
+      "cwd": "${workspaceFolder}/services",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Debug Notification service",
+      "mainClass": "io.github.amishpr.ledger.notification.NotificationServiceApplication",
+      "projectName": "notification-service",
+      "cwd": "${workspaceFolder}/services",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "java",
+      "request": "launch",
+      "name": "Debug API gateway",
+      "mainClass": "io.github.amishpr.ledger.gateway.ApiGatewayApplication",
+      "projectName": "api-gateway",
+      "cwd": "${workspaceFolder}/services",
+      "console": "integratedTerminal"
     },
     {
       "type": "chrome",
@@ -46,8 +59,16 @@
   ],
   "compounds": [
     {
-      "name": "Debug Full Stack (server + browser)",
-      "configurations": ["Debug API Server", "Launch Dashboard in Chrome"],
+      "name": "Debug Full Stack (services + browser)",
+      "configurations": [
+        "Debug Ledger service",
+        "Debug Recurring transfer service",
+        "Debug Insights service",
+        "Debug Notification service",
+        "Debug API gateway",
+        "Launch Dashboard in Chrome"
+      ],
+      "preLaunchTask": "infra: start",
       "stopAll": true
     }
   ]

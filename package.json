@@ -3,11 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "dev": "concurrently -n server,web -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix web\"",
+    "dev": "npm run build:services && concurrently -k -n infra,ledger,recurring,insights,notify,gateway,web -c gray,blue,magenta,cyan,yellow,green,white \"npm run infra\" \"npm run start:ledger\" \"npm run start:recurring\" \"npm run start:insights\" \"npm run start:notification\" \"npm run start:gateway\" \"npm run dev --prefix web\"",
     "dev:demo": "npm run dev:demo --prefix web",
-    "seed": "npm run seed --prefix server",
-    "test": "npm run test --prefix server && npm run test --prefix web",
-    "build": "npm run build --prefix server && npm run build --prefix web"
+    "infra": "java -jar services/dev-infra/target/dev-infra-1.0.0-SNAPSHOT.jar",
+    "infra:clean": "java -jar services/dev-infra/target/dev-infra-1.0.0-SNAPSHOT.jar --clean",
+    "start:ledger": "node scripts/wait-for.mjs 5432 9092 && java -Xmx384m -XX:TieredStopAtLevel=1 -jar services/ledger-service/target/ledger-service-1.0.0-SNAPSHOT.jar --ledger.seed.enabled=true",
+    "start:recurring": "node scripts/wait-for.mjs 5432 9092 && java -Xmx384m -XX:TieredStopAtLevel=1 -jar services/recurring-transfer-service/target/recurring-transfer-service-1.0.0-SNAPSHOT.jar --recurring.seed.enabled=true",
+    "start:insights": "node scripts/wait-for.mjs 5432 9092 && java -Xmx384m -XX:TieredStopAtLevel=1 -jar services/insights-service/target/insights-service-1.0.0-SNAPSHOT.jar",
+    "start:notification": "node scripts/wait-for.mjs 9092 && java -Xmx384m -XX:TieredStopAtLevel=1 -jar services/notification-service/target/notification-service-1.0.0-SNAPSHOT.jar",
+    "start:gateway": "java -Xmx384m -XX:TieredStopAtLevel=1 -jar services/api-gateway/target/api-gateway-1.0.0-SNAPSHOT.jar",
+    "build:services": "cd services && ./mvnw -B -q -ntp -DskipTests -Djacoco.skip=true install",
+    "test": "npm run test:services && npm run test --prefix web",
+    "test:services": "cd services && ./mvnw -B -ntp verify",
+    "build": "npm run build:services && npm run build --prefix web"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

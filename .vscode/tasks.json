@@ -4,106 +4,144 @@
     {
       "label": "install: all",
       "type": "shell",
-      "command": "npm install && npm install --prefix server && npm install --prefix web",
-      "options": { "cwd": "${workspaceFolder}" },
+      "command": "npm install && npm install --prefix web && npm run build:services",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": [],
-      "presentation": { "reveal": "always", "panel": "shared" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
-      "label": "dev: server + web (root)",
+      "label": "dev: everything (root)",
       "type": "shell",
       "command": "npm run dev",
-      "options": { "cwd": "${workspaceFolder}" },
-      "isBackground": true,
-      "problemMatcher": {
-        "owner": "typescript",
-        "pattern": { "regexp": "^$" },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": ".*",
-          "endsPattern": "ledger-server listening on"
-        }
+      "options": {
+        "cwd": "${workspaceFolder}"
       },
-      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
-    },
-    {
-      "label": "server: dev",
-      "type": "shell",
-      "command": "npm run dev",
-      "options": { "cwd": "${workspaceFolder}/server" },
       "isBackground": true,
       "problemMatcher": {
-        "owner": "typescript",
-        "pattern": { "regexp": "^$" },
-        "background": {
-          "activeOnStart": true,
-          "beginsPattern": ".*",
-          "endsPattern": "ledger-server listening on"
-        }
-      },
-      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
-    },
-    {
-      "label": "web: dev",
-      "type": "shell",
-      "command": "npm run dev",
-      "options": { "cwd": "${workspaceFolder}/web" },
-      "isBackground": true,
-      "problemMatcher": {
-        "owner": "typescript",
-        "pattern": { "regexp": "^$" },
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
         "background": {
           "activeOnStart": true,
           "beginsPattern": ".*",
           "endsPattern": "ready in"
         }
       },
-      "presentation": { "reveal": "always", "panel": "dedicated", "group": "dev" }
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      }
     },
     {
-      "label": "server: test",
+      "label": "infra: start",
       "type": "shell",
-      "command": "npm test",
-      "options": { "cwd": "${workspaceFolder}/server" },
-      "group": { "kind": "test", "isDefault": true },
+      "command": "npm run build:services && npm run infra",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "infrastructure is up"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "web: dev",
+      "type": "shell",
+      "command": "npm run dev",
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "ready in"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "services: test",
+      "type": "shell",
+      "command": "./mvnw -B -ntp verify",
+      "options": {
+        "cwd": "${workspaceFolder}/services"
+      },
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
       "problemMatcher": []
     },
     {
-      "label": "server: build",
+      "label": "services: build",
       "type": "shell",
-      "command": "npm run build",
-      "options": { "cwd": "${workspaceFolder}/server" },
+      "command": "./mvnw -B -ntp -DskipTests install",
+      "options": {
+        "cwd": "${workspaceFolder}/services"
+      },
       "group": "build",
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": []
     },
     {
       "label": "web: build",
       "type": "shell",
       "command": "npm run build",
-      "options": { "cwd": "${workspaceFolder}/web" },
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
       "group": "build",
-      "problemMatcher": ["$tsc"]
+      "problemMatcher": [
+        "$tsc"
+      ]
     },
     {
       "label": "web: lint",
       "type": "shell",
       "command": "npm run lint",
-      "options": { "cwd": "${workspaceFolder}/web" },
+      "options": {
+        "cwd": "${workspaceFolder}/web"
+      },
       "problemMatcher": []
     },
     {
-      "label": "db: migrate",
+      "label": "infra: reset data",
       "type": "shell",
-      "command": "npm run prisma:migrate",
-      "options": { "cwd": "${workspaceFolder}/server" },
-      "problemMatcher": []
-    },
-    {
-      "label": "db: seed",
-      "type": "shell",
-      "command": "npm run seed",
-      "options": { "cwd": "${workspaceFolder}" },
-      "problemMatcher": []
+      "command": "npm run infra:clean",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Wipes the local Postgres data so the demo seed runs again"
     }
   ]
 }
