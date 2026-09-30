@@ -1,12 +1,13 @@
 # Ledger
 
-Ledger is a small core banking system built to show how a real double entry
-ledger works under the hood. It has a Node and TypeScript API backed by a
-Prisma database, and a React dashboard that updates in real time as money
-moves between accounts. The project is not trying to be a full bank. It is
-trying to get the hard parts right: every transaction has to balance, money
-is never represented as a float, retried requests never double post, and
-nothing already posted is ever edited or deleted.
+Ledger is a small core banking system built to show how a real double
+entry ledger works under the hood. Its backend is a set of Java and Spring
+Boot microservices that talk to each other over REST and Kafka, backed by
+Postgres, and a React dashboard updates in real time as money moves
+between accounts. The project is not trying to be a full bank. It is
+trying to get the hard parts right: every transaction has to balance,
+money is never represented as a float, retried requests never double
+post, and nothing already posted is ever edited or deleted.
 
 **[Try the live demo](https://amishpr-ledger.netlify.app/).** The whole
 backend runs in your browser, so there is nothing to install and no account
@@ -22,267 +23,318 @@ second browser tab without refreshing, look at a running statement for any
 account, and reverse a past transaction to see how a correction is handled
 without touching the original record. You can also schedule a transfer to
 repeat on its own, download an account's statement as a CSV file, and see
-a chart of where money has been going by category and by month. Under the
-hood, every money movement, whether typed into the transfer form or posted
-automatically by the scheduler, goes through the same core function that
-checks the accounting math before anything is written to the database.
+a chart of where money has been going by category and by month.
+
+Under the hood, every money movement, whether typed into the transfer form
+or posted automatically by the scheduler, goes through one service and one
+database transaction that checks the accounting math before anything is
+written. Everything that happens afterwards (the spending chart updating,
+the other browser tab refreshing, the scheduler learning about a new
+account) happens because that service published an event to Kafka.
+
+## Architecture
+
+```
+Browser (React dashboard)
+   |  REST /api/v1/**                        WebSocket /ws
+   v
+api-gateway :4000   (Spring Cloud Gateway: routing, CORS, rate limit, JWT, Swagger UI)
+   |-- /api/v1/accounts, /transactions  ->  ledger-service :8081               -> Postgres "ledger"
+   |-- /api/v1/recurring-transfers      ->  recurring-transfer-service :8082   -> Postgres "recurring"
+   |-- /api/v1/insights                 ->  insights-service :8083             -> Postgres "insights"
+   '-- /ws                              ->  notification-service :8084         (sockets only)
+
+Kafka topics
+   ledger.accounts.v1        account.created                    ledger -> recurring (account replica)
+   ledger.transactions.v1    transaction.posted / .reversed     ledger -> insights, notifications
+   recurring.transfers.v1    recurring-transfer.executed / ...  recurring -> notifications
+```
+
+| Service | What it owns |
+| --- | --- |
+| `ledger-service` | Accounts, double entry transactions, reversals, statements, CSV export, the audit log. The only thing that writes money |
+| `recurring-transfer-service` | Scheduled transfers and the background sweep that posts them through the ledger's API, guarded by a distributed lock |
+| `insights-service` | A read model of spending, built only from ledger events and rebuildable by replaying them |
+| `notification-service` | Open dashboard WebSockets. Turns events into live updates |
+| `api-gateway` | The one public address: routing, CORS, rate limiting, security headers, optional JWT, one Swagger UI for everything |
+
+Services call each other over REST when one needs an answer (the scheduler
+asking the ledger to post a transfer) and publish to Kafka when something
+has already happened (a transaction was posted). Events leave each service
+through a transactional outbox, so a change and its event can never
+disagree. The reasoning behind each of these choices is in
+[docs/adr](docs/adr/README.md), and the full story is in
+[WALKTHROUGH.md](WALKTHROUGH.md).
 
 ## Features
 
+**Accounting**
+
 - Double entry accounting enforced on every transaction, not just assumed
-- All money stored and transmitted as whole cents using BigInt, so there is
-  no floating point rounding anywhere in the system
-- Idempotent transaction posting using client supplied keys, so retrying a
-  request after a timeout never creates a duplicate transfer
-- Overdraft protection on checking and savings style accounts
-- Reversals instead of edits or deletes, so the ledger stays a true history
-- Recurring transfers posted by a background job on the server, on a
-  schedule you pick, with the same idempotency guarantee protecting each
-  occurrence
-- A spending breakdown chart, by category and by month, built from the
-  same entries the ledger already records
-- An interactive balance history chart per account, with axis labels, a
-  hover crosshair, and a tooltip, built as plain SVG with no charting
-  library
+- All money stored and transmitted as whole cents, never a float. Amounts
+  travel as strings so JavaScript never has to hold one as a number
+- Idempotent posting with an `Idempotency-Key` header, safe even when two
+  identical requests arrive at the same instant
+- Overdraft protection on asset accounts, safe under concurrent requests
+  through row locks taken in a fixed order
+- Reversals instead of edits or deletes, with database triggers that refuse
+  to change a posted entry no matter which code path tries
+- Statements with running balances computed by a SQL window function
+- An audit log written in the same transaction as each change
+
+**Distributed system**
+
+- Five Spring Boot services, each with its own Postgres database
+- Kafka events through a transactional outbox, with idempotent consumers,
+  retries with backoff, and dead letter topics
+- Recurring transfers swept by one instance at a time (ShedLock), posted with
+  derived idempotency keys so a retry can never double post, and kept due
+  rather than skipped when the ledger is temporarily unreachable
+- A Resilience4j circuit breaker and retry on the one synchronous call
+  between services
+- An account replica in the scheduler fed by events, so it keeps working
+  while the ledger is down
+- A spending read model (CQRS) built purely from events
+
+**API and operations**
+
+- Versioned REST API under `/api/v1`, documented with OpenAPI and browsable
+  in one Swagger UI at the gateway
+- RFC 9457 Problem Details errors with stable codes and trace ids
+- Write rate limiting, CORS, security headers, and optional JWT scopes at
+  the gateway
+- Health, liveness and readiness probes, Prometheus metrics, OpenTelemetry
+  traces that follow a request through Kafka, structured JSON logs
+- Docker images built in layers, a Docker Compose stack with Jaeger,
+  Prometheus and Grafana, Kubernetes manifests, and a CI pipeline that tests,
+  builds and scans every image
+
+**Dashboard**
+
+- Live updates over WebSockets, including transfers the scheduler posts
+- An interactive balance history chart per account, built as plain SVG
+- A spending breakdown by category and by month
 - CSV export of any account's full statement
-- Live updates over WebSockets, so every connected browser tab sees new
-  activity the moment it is posted, including transfers the scheduler
-  posts on its own
-- A REST API with input validation and clear error codes
-- An automated test suite covering the accounting rules and the scheduler
-  directly
-- A demo build that runs the whole backend inside the browser, so the
-  dashboard can be hosted on a free static host with nothing to pay for
-  and no server to keep awake
+- A demo build that runs a copy of the backend inside the browser, so the
+  dashboard can be hosted on a free static host
 
 ## Tech stack
 
-**Backend:** Node.js, TypeScript, Express, Prisma, SQLite for local
-development with a Postgres ready schema, Zod for request validation, the
-`ws` library for WebSockets, and Vitest for testing.
+**Backend:** Java 21, Spring Boot 4.1, Spring Cloud Gateway (2025.1),
+Spring Data JPA and Hibernate, `JdbcClient`, Flyway, Postgres 17, Apache
+Kafka (KRaft) with Spring Kafka, Resilience4j, ShedLock, springdoc-openapi,
+Micrometer and OpenTelemetry, Maven.
+
+**Testing:** JUnit 6, AssertJ, Mockito, MockMvc, WebTestClient, ArchUnit,
+an embedded Postgres and an embedded Kafka broker, so the whole suite runs
+with nothing installed but a JDK. Playwright for end to end checks.
+
+**Infrastructure:** Docker, Docker Compose, Kubernetes with Kustomize,
+GitHub Actions, Jaeger, Prometheus, Grafana.
 
 **Frontend:** React, TypeScript, and Vite, styled with plain CSS. No UI
-component library and no state management library were used on purpose,
-since the app is small enough that a few React hooks are enough.
-
-If you want the reasoning behind each of these choices, that is covered in
-detail in [WALKTHROUGH.md](WALKTHROUGH.md).
+component library and no state management library, since the app is small
+enough that a few React hooks are enough.
 
 ## Project structure
 
 ```
 ledger-bank-system/
-├─ .github/workflows/         Builds and publishes the demo to GitHub Pages
-├─ server/                    Express API
-│  ├─ prisma/
-│  │  ├─ schema.prisma        Account, Transaction, Entry, RecurringTransfer, AuditLog
-│  │  ├─ migrations/          SQL migration history
-│  │  └─ seed.ts              Creates demo accounts and sample activity
+├─ services/                         Spring Boot backend (Maven multi-module, ./mvnw included)
+│  ├─ event-contracts/               Versioned Kafka event records shared by every service
+│  ├─ platform/                      Shared auto-configuration: Problem Details, outbox, Kafka retries, cents type
+│  ├─ ledger-service/                Accounts, transactions, statements, audit log, demo seed
+│  ├─ recurring-transfer-service/    Schedules, the sweep, the ledger client, the account replica
+│  ├─ insights-service/              Spending read model built from events
+│  ├─ notification-service/          Kafka to WebSocket fan-out
+│  ├─ api-gateway/                   Spring Cloud Gateway
+│  ├─ test-support/                  Embedded Postgres and Kafka helpers for tests
+│  ├─ dev-infra/                     Postgres and Kafka in one JVM, for machines without Docker
+│  └─ Dockerfile                     One layered image build for every service
+├─ web/                              React dashboard
 │  ├─ src/
-│  │  ├─ ledger/              Core accounting logic, recurring transfers, insights, and their tests
-│  │  ├─ api/                 Express routes and request validation
-│  │  ├─ realtime/            WebSocket broadcast
-│  │  ├─ scheduler.ts         Background job that posts due recurring transfers
-│  │  ├─ db.ts                Prisma client
-│  │  └─ index.ts             App entry point
-│  └─ package.json
-├─ web/                       React dashboard
-│  ├─ src/
-│  │  ├─ components/          Accounts panel, transfer form, statement, recurring transfers, spending chart, feed
-│  │  ├─ api/                 The LedgerApi interface, the HTTP client, and shared types
-│  │  ├─ demo/                In-browser backend used by the hosted demo build, and its tests
-│  │  ├─ money.ts             Formatting and parsing for cent amounts
-│  │  ├─ ledgerMath.ts         Client side mirror of the balance direction rule
-│  │  └─ useLedgerSocket.ts   WebSocket hook with reconnect
-│  ├─ public/                 Favicon, PNG app icons, web manifest, and the link preview card
-│  ├─ index.html              Page shell, plus the SEO and link preview metadata
-│  └─ package.json
-├─ docker-compose.yml         Postgres for a production style local run
-├─ docs/make-social-assets.py One off generator for the link preview card and the PNG icons
-├─ netlify.toml               Build settings, redirects, and cache headers for the hosted demo
-├─ package.json               Root scripts that run both apps together
-└─ README.md
+│  │  ├─ components/                 Accounts panel, transfer form, statement, recurring transfers, charts, feed
+│  │  ├─ api/                        The LedgerApi interface, the HTTP client, and shared types
+│  │  ├─ demo/                       In-browser backend used by the hosted demo build, and its tests
+│  │  └─ useLedgerSocket.ts          WebSocket hook with reconnect
+│  ├─ public/                        Favicon, app icons, web manifest, link preview card
+│  └─ Dockerfile                     The dashboard as static files behind nginx
+├─ deploy/
+│  ├─ k8s/base/                      Kustomize manifests
+│  ├─ observability/                 Prometheus scrape config, Grafana datasource and dashboard
+│  └─ postgres/init.sql              Creates one database per service
+├─ docs/adr/                         Architecture decision records
+├─ scripts/wait-for.mjs              Lets `npm run dev` start services once Postgres and Kafka are up
+├─ docker-compose.yml                The whole stack, plus optional observability and tools
+└─ package.json                      Root scripts that run everything together
 ```
 
 ## How the data model works
 
-There are five tables.
+Each service owns its tables. The ledger's are the interesting ones.
 
-**Account** has a name, a type (asset, liability, equity, revenue, or
+**account** has a name, a type (asset, liability, equity, revenue, or
 expense), and a currency. The type matters because it decides which
 direction increases the account's balance. This is standard double entry
 accounting: a debit increases an asset or expense account and decreases a
 liability, equity, or revenue account, while a credit does the opposite.
 
-**Transaction** is the record of something happening, like a transfer or a
-fee. It has a description, a status of posted or voided, and an optional
-idempotency key.
+**ledger_transaction** is the record of something happening, like a
+transfer or a fee. It has a description, a status of posted or voided, an
+optional idempotency key with a fingerprint of the request that used it,
+an optional origin (such as the recurring transfer that posted it), and,
+for a reversal, the transaction it reverses.
 
-**Entry** is one leg of a transaction. A transfer between two accounts is
-always two entries: a debit on one account and a credit on the other, for
-the same amount. A transaction can have more than two entries if it touches
-more than two accounts, as long as the debits and credits still add up.
+**journal_entry** is one leg of a transaction. A transfer between two
+accounts is always two entries: a debit on one account and a credit on the
+other, for the same amount. A transaction can have more than two entries if
+it touches more than two accounts, as long as the debits and credits still
+add up. Entries carry a journal sequence number that orders entries written
+in the same instant, and a trigger makes them append-only.
 
-**RecurringTransfer** is a standing instruction to post the same transfer
-on a schedule (every minute for demo purposes, daily, weekly, or monthly).
-It does not touch the ledger itself. It only tells the background job in
-`scheduler.ts` what to post and when, and the job posts it through the
-exact same function a manual transfer uses.
+**audit_log** records every account creation and every transaction posted
+or reversed, written in the same database transaction as the change.
 
-**AuditLog** records every account creation and every transaction posted or
-reversed, so there is a plain trail of what happened and when, separate
-from the entries themselves.
+**outbox_event** holds events waiting to be published to Kafka.
 
 Balances are never stored as a column anywhere. A balance is always the sum
-of an account's entries, calculated on request. This means there is exactly
-one source of truth for how much money is in an account: its history.
+of an account's entries, so there is exactly one source of truth for how
+much money is in an account: its history.
+
+The recurring transfer service keeps `recurring_transfer` (a standing
+instruction: which accounts, how much, how often, when it is next due), an
+`account_replica` fed by `account.created` events, a `shedlock` table, and
+its own outbox. The insights service keeps `spending_by_category`,
+`spending_by_month`, and `processed_event`, which is how it ignores an event
+it has already applied.
 
 ## API reference
 
-All amounts are sent and received as strings representing whole cents, for
-example `"1050"` for ten dollars and fifty cents. The base URL in local
-development is `http://localhost:4000`.
+All amounts are sent and received as strings of whole cents, for example
+`"1050"` for ten dollars and fifty cents. The base URL is the gateway,
+`http://localhost:4000/api/v1`. The OpenAPI documents for every service are
+browsable at **http://localhost:4000/swagger-ui.html**.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/health` | Basic health check |
 | GET | `/accounts` | List every account with its current balance |
-| POST | `/accounts` | Create an account. Body: `name`, `type`, optional `currency` |
-| GET | `/accounts/:id` | Get one account and its balance |
-| GET | `/accounts/:id/statement?limit=25` | Recent entries for an account with a running balance |
-| POST | `/transactions` | Post a transaction. Body: `description`, `entries` (array of `accountId`, `direction`, `amountMinor`), optional `idempotencyKey` |
-| POST | `/transactions/:id/reverse` | Reverse a posted transaction. Body: optional `note` |
-| GET | `/accounts/:id/statement/export` | Download the account's full statement as a CSV file |
+| POST | `/accounts` | Open an account. Body: `name`, `type`, optional `currency` |
+| GET | `/accounts/{id}` | Get one account and its balance |
+| GET | `/accounts/{id}/statement?limit=50` | Recent entries, newest first, each with the running balance after it. `limit` is 1 to 1000 |
+| GET | `/accounts/{id}/statement/export` | The account's full statement as a CSV file, oldest first |
+| POST | `/transactions` | Post a transaction. Header: `Idempotency-Key` (recommended). Body: `description`, `entries` (array of `accountId`, `direction`, `amountMinor`). Answers 201, or 200 with `Idempotent-Replayed: true` for a retry |
+| GET | `/transactions/{id}` | Get one transaction and its entries |
+| POST | `/transactions/{id}/reverse` | Reverse a posted transaction. Body: optional `note` |
 | GET | `/recurring-transfers` | List every scheduled transfer |
 | POST | `/recurring-transfers` | Schedule one. Body: `description`, `fromAccountId`, `toAccountId`, `amountMinor`, `interval` (`EVERY_MINUTE`, `DAILY`, `WEEKLY`, or `MONTHLY`), optional `startAt` |
-| POST | `/recurring-transfers/:id/toggle-active` | Pause it if it is running, or resume it if it is paused |
-| DELETE | `/recurring-transfers/:id` | Cancel it. Transfers it already posted are not undone |
+| PATCH | `/recurring-transfers/{id}` | Pause or resume. Body: `{ "active": true }` |
+| POST | `/recurring-transfers/{id}/toggle-active` | Flip between paused and running. Kept for the dashboard; prefer PATCH |
+| DELETE | `/recurring-transfers/{id}` | Cancel it. Transfers it already posted are not undone |
 | GET | `/insights/spending` | Total spending grouped by expense account and by month |
 
-A WebSocket server runs alongside the API at `ws://localhost:4000/ws` and
-broadcasts a message any time a transaction is posted or reversed, whether
-that happened from the transfer form or from the scheduler, which is what
-lets the dashboard update without polling.
+Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) Problem
+Details (`application/problem+json`) with a stable `code` to switch on and a
+`traceId` to find the request in Jaeger:
 
-A background job inside the same server process checks every 15 seconds
-(configurable, see below) for any recurring transfer that is due, and
-posts it through the normal transaction path, invariants and all. If a
-scheduled transfer would overdraw its account, that occurrence is skipped
-and recorded as failed rather than retried forever, and it tries again on
-its next scheduled occurrence.
+```json
+{
+  "status": 409,
+  "title": "Conflict",
+  "detail": "Account 0190c3a2-... has insufficient funds",
+  "instance": "/api/v1/transactions",
+  "code": "INSUFFICIENT_FUNDS",
+  "traceId": "72e3a8b98a8c7d1ac07ca098a0c4488e"
+}
+```
 
-Errors come back as JSON with an `error` code and a human readable
-`message`, for example `INSUFFICIENT_FUNDS`, `UNBALANCED_TRANSACTION`, or
-`IDEMPOTENCY_CONFLICT`, along with an appropriate HTTP status code.
+Codes include `VALIDATION_ERROR` (with a `violations` list),
+`UNBALANCED_TRANSACTION`, `INSUFFICIENT_FUNDS`, `IDEMPOTENCY_CONFLICT`,
+`CURRENCY_MISMATCH`, `ACCOUNT_NOT_FOUND`, `ALREADY_VOIDED`,
+`INVALID_RECURRING_TRANSFER`, `LEDGER_UNAVAILABLE`, `RATE_LIMITED`,
+`UPSTREAM_UNAVAILABLE` and `UPSTREAM_TIMEOUT`.
 
-## Prerequisites
+A WebSocket at `ws://localhost:4000/ws` sends a message whenever a
+transaction is posted or reversed, or the scheduler runs or fails a
+transfer, which is what lets the dashboard update without polling.
 
-You need Node.js. This was built and tested on Node 24, but anything 20 or
-newer should work fine. npm comes bundled with Node, so no separate install
-is needed there. Docker is only needed if you want to run the database on
-Postgres instead of the default SQLite setup, and is entirely optional.
+## Running it
 
-## Setup and installation
+You need a JDK 21 or newer and Node.js 20 or newer. Maven does not need
+installing; the wrapper in `services/` downloads it. Docker is optional.
 
-Clone or download the project, then from the `ledger-bank-system` folder install
-dependencies for all three package.json files. They are kept separate on
-purpose so the API and the frontend can be deployed independently later.
+Install the JavaScript dependencies once:
 
 ```bash
-npm install --prefix server
-npm install --prefix web
 npm install
+npm install --prefix web
 ```
 
-The last command installs the root's only dependency, a small tool called
-`concurrently` that lets you start both the API and the frontend with one
-command.
-
-Next, set up the environment files. Each app has a `.env.example` you can
-copy directly, since the defaults already point the frontend at the local
-API.
+### With Docker
 
 ```bash
-cp server/.env.example server/.env
-cp web/.env.example web/.env
+docker compose up --build
 ```
 
-Create the local database and apply the schema:
+That builds and starts Postgres, Kafka, all five services, the dashboard
+and Jaeger. Then:
 
-```bash
-npm run prisma:migrate --prefix server
-```
+| What | Where |
+| --- | --- |
+| Dashboard | http://localhost:5173 |
+| API and Swagger UI | http://localhost:4000/swagger-ui.html |
+| Traces (Jaeger) | http://localhost:16686 |
 
-This creates a SQLite file at `server/dev.db` and generates the Prisma
-client. You will be prompted for a migration name the first time only if
-one does not already exist in the repository.
+Add `--profile observability` for Prometheus (http://localhost:9090) and a
+provisioned Grafana dashboard (http://localhost:3000), and `--profile
+tools` for Kafka UI (http://localhost:8090).
 
-Load some demo data so the dashboard is not empty:
-
-```bash
-npm run seed
-```
-
-This creates a set of demo accounts belonging to two fictional people and
-generates a full year of realistic activity for them: biweekly paychecks,
-weekly groceries, monthly rent and subscriptions, dining out, a handful
-of large one-off purchases, and a monthly transfer to savings, all spread
-across real calendar dates ending today. It's generated with a seeded
-random number generator, so re-running the seed always produces the same
-year rather than a different one each time. It also includes one
-reversal so you can see what a corrected transaction looks like, and
-schedules one recurring transfer that is already due, so if you start
-the app right after seeding, you can watch the background job post its
-first occurrence within its first sweep instead of having to take it on
-faith.
-
-The year of history is what gives the balance chart and the spending
-breakdown something real to show. The statement table only displays the
-most recent 40 entries, since a year of activity would make it
-unreadable, but the balance chart pulls a much larger window on its own
-so the full year is visible there, and the CSV export always has
-everything regardless of what either view is currently showing.
-
-## Running the app
-
-From the `ledger-bank-system` root:
+### Without Docker
 
 ```bash
 npm run dev
 ```
 
-This starts the API on port 4000 and the frontend on port 5173 at the same
-time, with labeled, color coded output for each. Open
-`http://localhost:5173` in your browser.
+This builds the services, then starts `dev-infra` (a real Postgres and a
+real Kafka broker running inside one JVM, on the same ports Docker Compose
+uses), the five services, and the Vite dev server, with labeled output for
+each. Open http://localhost:5173. The first start takes a minute or two
+while everything warms up.
 
-If you would rather run them separately, in one terminal run
-`npm run dev --prefix server` and in another run `npm run dev --prefix web`.
+Either way, the ledger seeds itself on first start with a year of activity
+for two fictional people: biweekly paychecks, weekly groceries, monthly rent
+and subscriptions, dining out, a few large purchases, a monthly transfer to
+savings, and one reversal. It uses a seeded random number generator, so
+every run produces the same year, the same one the hosted demo shows. The
+recurring transfer service waits for those accounts to arrive as events and
+schedules a weekly savings sweep that is already due, so you can watch the
+background job post its first transfer within its first sweep.
 
-If you're using VS Code, the project ships with `.vscode/tasks.json` and
-`.vscode/launch.json`. Open the Run and Debug panel and pick "Debug Full
-Stack (server + browser)" to start the API under the Node debugger and
-open the dashboard in Chrome with breakpoints working on both sides, or
-use the Command Palette's "Tasks: Run Task" for things like `server: dev`,
-`web: dev`, `server: test`, or `db: seed` without leaving the editor.
+Local data lives in `.dev-data/` and survives restarts. To start over,
+stop everything and run `npm run infra:clean` once, or `docker compose down
+-v` for the Docker stack.
+
+If you use VS Code, `.vscode/launch.json` has a debug configuration for
+each service and a compound that starts all of them plus Chrome, and
+`.vscode/tasks.json` has tasks for testing and building.
 
 ## Demo mode, and hosting this for free
 
-The API is a long running Node process with a WebSocket server, a
-background scheduler, and a database, so a static host like Netlify or
-GitHub Pages cannot run it. Rather than leave the project as something you
-have to clone and start locally before you can see anything, the frontend
-can run against a second backend that lives entirely in the browser.
+The backend is five JVMs, Postgres and Kafka, so a static host like Netlify
+or GitHub Pages cannot run it. Rather than leave the project as something
+you have to clone and start locally before you can see anything, the
+frontend can run against a second backend that lives entirely in the
+browser.
 
 Every component talks to a `LedgerApi` interface rather than to `fetch`
 directly, and there are two implementations of it. One is the HTTP client
-that calls Express. The other, in `web/src/demo`, is a port of the server's
-ledger code that keeps its tables in memory: the same balance check, the
+that calls the API gateway. The other, in `web/src/demo`, is a port of the
+ledger's rules that keeps its tables in memory: the same balance check, the
 same overdraft protection, the same idempotency keys, the same reversals,
 the same calendar math, and the same recurring transfer sweep running on a
 15 second interval inside the tab. It seeds itself on load with the same
-year of activity the real seed script generates, using the same seeded
-random number generator, so the hosted demo and a local checkout show the
-same data.
+year of activity the real seed generates, using the same seeded random
+number generator, so the hosted demo and a local checkout show the same
+data.
 
 Run it locally with:
 
@@ -290,10 +342,10 @@ Run it locally with:
 npm run dev:demo
 ```
 
-No API and no database need to be running. The dashboard shows a banner
-explaining that it is in demo mode, and a reset button that reloads and
-regenerates the data. Everything written in demo mode lives in memory only
-and is gone on reload.
+No services need to be running. The dashboard shows a banner explaining
+that it is in demo mode, and a reset button that reloads and regenerates
+the data. Everything written in demo mode lives in memory only and is gone
+on reload.
 
 There are two ways to deploy it, and both are set up already.
 
@@ -316,17 +368,9 @@ passes it as `VITE_BASE`, and `web/vite.config.ts` turns that into Vite's
 `base`. It resolves to `/` when unset, which is what Netlify and local
 development use, so the same build command works for all three.
 
-Nothing has to be paid for or kept awake in either case. The same build
-also works on Vercel or Cloudflare Pages.
-
 What the demo does not cover: there is no shared state between visitors,
-since each browser gets its own copy of the data, and it is not a real
-deployment of the API. If you want the real thing running live, the API
-needs a host that can keep a Node process alive, such as Render or Koyeb,
-with a Postgres database from a provider like Neon or Supabase. In that
-setup you would deploy the frontend with `VITE_DEMO` unset and
-`VITE_API_URL` and `VITE_WS_URL` pointed at the API, and set `CORS_ORIGIN`
-on the API to the frontend's URL.
+since each browser gets its own copy of the data, and it is not a
+deployment of the real services. For that, see "Deploying" below.
 
 ## Search engines and link previews
 
@@ -381,98 +425,118 @@ contents do.
 npm test
 ```
 
-This runs both suites. The backend's Vitest suite sets up its own separate
-SQLite database so it never touches your development data, and checks the
-core accounting rules directly: a transaction that does not balance gets
-rejected, an entry that would overdraw an account gets rejected without
-changing the balance, a retried request with the same idempotency key
-returns the original result instead of posting twice, reusing a key with a
-different payload is treated as a conflict, and reversing a transaction
-correctly restores the prior balance and marks the original as voided.
+This runs both suites. `npm run test:services` (or `./mvnw verify` in
+`services/`) runs about 150 backend tests: unit tests, MockMvc and
+WebTestClient slice tests, integration tests against a real Postgres and a
+real Kafka broker started inside the test JVM, and ArchUnit architecture
+rules. Nothing needs installing but a JDK, which is why it runs the same way
+on a laptop and in CI. Coverage reports land in each module's
+`target/site/jacoco/`.
 
-The frontend suite runs the same checks against the in-browser demo
-backend, case for case, so the two implementations cannot quietly drift
-apart on the rules that matter. It also checks that the generated year of
-demo data never takes the main checking account negative at any point.
+The integration tests include every case from the original Node test
+suite: a transaction that does not balance is rejected, an overdraft is
+rejected without changing the balance, a retried request with the same
+idempotency key returns the original result, reusing a key with a different
+payload is a conflict, and a reversal restores the prior balance and voids
+the original. On top of those: twenty concurrent withdrawals that must leave
+exactly zero, eight simultaneous requests with one key that must post
+exactly once, triggers that must refuse to edit history, events that must
+reach Kafka, a poison message that must land in a dead letter topic, two
+sweeps at once where only one may run, and the gateway's routing, rate
+limiting and JWT scopes.
 
-## Building for production
+The frontend suite runs the same core cases against the in-browser demo
+backend, so the two implementations cannot quietly drift apart on the
+rules that matter. It also checks that the generated year of demo data
+never takes the main checking account negative.
+
+## Deploying
+
+**Images.** `services/Dockerfile` builds any service:
 
 ```bash
-npm run build
+docker build --build-arg SERVICE=ledger-service -t ledger/ledger-service services
 ```
 
-This compiles the API's TypeScript to `server/dist` and builds the
-frontend into `web/dist` as static files ready to be served by any static
-host. That build expects a running API. To build the self contained demo
-version instead, run `npm run build:demo --prefix web`.
+It builds only that module and its dependencies, splits the jar into
+Spring Boot's layers so a code change rebuilds a few kilobytes instead of
+the dependency layer, and runs on a JRE as a non-root user with a heap sized
+from the container's memory limit. `web/Dockerfile` builds the dashboard
+into an nginx image.
 
-## Switching from SQLite to Postgres
+**Kubernetes.** `deploy/k8s/base` is a Kustomize base:
+`kubectl apply -k deploy/k8s/base`. Each service gets a Deployment and a
+Service with startup, liveness and readiness probes on the Actuator health
+groups, resource requests and limits, a restricted security context
+(non-root, read-only root filesystem, no capabilities), and a pre-stop delay
+for graceful shutdown. The ledger and gateway autoscale on CPU, the ledger
+has a disruption budget, and only the gateway is exposed through an Ingress.
+Postgres and Kafka are expected to be managed services such as Amazon RDS
+and MSK; point `deploy/k8s/base/configmap.yaml` at them and create the
+`ledger-db` secret described in `secret.example.yaml`.
 
-The schema only uses types that exist in both databases, so moving to
-Postgres does not require changing any application code, only the
-datasource configuration.
+**CI.** `.github/workflows/backend-ci.yml` runs `./mvnw verify` on every
+change under `services/`, keeps the test and coverage reports, then builds
+every service's image and scans it with Trivy. Dependabot keeps Maven, npm,
+Docker and Actions dependencies current.
 
-1. Start Postgres with `docker compose up -d`, which reads the included
-   `docker-compose.yml` and starts a Postgres container with a database
-   called `ledger`.
-2. In `server/prisma/schema.prisma`, change the datasource provider from
-   `sqlite` to `postgresql`.
-3. In `server/.env`, set `DATABASE_URL` to
-   `postgresql://ledger:ledger@localhost:5432/ledger`.
-4. Run `npm run prisma:migrate --prefix server` again to apply the schema
-   to the new database.
+## Configuration
 
-## Environment variables
+Every setting has a default that works locally and can be overridden with
+an environment variable.
 
-**server/.env**
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `file:./dev.db` | Where Prisma connects. Point this at Postgres for production |
-| `PORT` | `4000` | Port the API and WebSocket server listen on |
-| `CORS_ORIGIN` | `http://localhost:5173` | The single origin allowed to call the API from a browser |
-| `SCHEDULER_INTERVAL_MS` | `15000` | How often the background job checks for due recurring transfers |
+| Variable | Default | Used by | Purpose |
+|---|---|---|---|
+| `LEDGER_DB_URL`, `RECURRING_DB_URL`, `INSIGHTS_DB_URL` | `jdbc:postgresql://localhost:5432/<service>` | each service | Its own database |
+| `*_DB_USER`, `*_DB_PASSWORD` | `ledger` / `ledger` | each service | Database credentials |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | all but the gateway | Kafka |
+| `LEDGER_SEED_ENABLED` | `false` | ledger | Seed a year of demo data into an empty ledger |
+| `RECURRING_SEED_ENABLED` | `false` | recurring | Schedule the demo savings sweep |
+| `SCHEDULER_INTERVAL` | `PT15S` | recurring | How often the sweep looks for due transfers |
+| `LEDGER_SERVICE_URL` | `http://localhost:8081` | recurring, gateway | Where the ledger is |
+| `RECURRING_SERVICE_URL`, `INSIGHTS_SERVICE_URL` | `http://localhost:8082`, `:8083` | gateway | Upstreams |
+| `NOTIFICATION_SERVICE_WS_URL` | `ws://localhost:8084` | gateway | WebSocket upstream |
+| `CORS_ORIGIN` | `http://localhost:5173` | gateway | The dashboard's origin |
+| `GATEWAY_JWT_ENABLED` | `false` | gateway | Require a bearer token. Set `SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI` too |
+| `NOTIFICATION_ALLOWED_ORIGINS` | `http://localhost:*` | notification | Origins allowed to open the socket |
+| `PUBLIC_API_URL` | `http://localhost:4000` | all | Server URL shown in the OpenAPI documents |
+| `MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT` | unset | all | Where to send traces. Unset means none are exported |
+| `PORT` | 4000, 8081 to 8084 | all | Listening port |
 
 **web/.env**
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:4000` | Base URL the dashboard uses for REST calls |
+| `VITE_API_URL` | `http://localhost:4000/api/v1` | Base URL the dashboard uses for REST calls |
 | `VITE_WS_URL` | `ws://localhost:4000/ws` | URL the dashboard connects to for live updates |
 | `VITE_DEMO` | unset | Set to `true` to run the in-browser backend instead of calling the API. `netlify.toml` and the GitHub Pages workflow set this for the hosted builds |
 | `VITE_BASE` | unset | Path prefix the site is served from, needed only on GitHub Pages, where it is `/<repository-name>`. Unset means the domain root |
 
 ## What is intentionally left out
 
-A few things were left out on purpose rather than by accident, and it is
-worth being upfront about them.
-
-There is no login or authentication. This is a demo of the ledger itself,
-not a multi user product, and adding accounts owned by specific users would
-not change anything about how the accounting logic works.
+There is no login. The gateway can require JWTs with read and write scopes
+when an identity provider is configured, but the dashboard has no users, and
+accounts owned by specific people would not change how the accounting
+works.
 
 There is no support for a single transaction spanning multiple currencies.
 Every entry in a transaction has to share one currency. Real currency
 conversion needs its own pair of entries against an FX account and its own
-set of rules, which felt like a separate project rather than an extension
-of this one.
+set of rules, which felt like a separate project rather than an extension of
+this one.
 
-The account statement is calculated by replaying an account's full entry
-history every time it is requested. That is fine at the scale of a demo
-and would not be fine at the scale of a real bank account with years of
-history. A production version of this would keep a running balance that
-updates as entries are written, instead of recalculating it from scratch
-on every request.
+Balances are sums over an indexed table rather than a stored column. That
+is fast at this scale. A production ledger would keep a balance per account
+updated in the posting transaction, with the sums kept as a reconciliation
+check.
 
-The scheduler is a single `setInterval` inside the same process as the
-API, not a separate worker or job queue. That is fine as long as only one
-copy of the server is running, which is true here. It would not be fine
-the moment you run two copies of the server for reliability, since both
-would sweep for due transfers at the same time. The idempotency key on
-each occurrence means they could not both post it twice, but a real
-production setup would still want one clear owner of the schedule, using
-something like a database lock or a proper job queue, rather than relying
-on every instance racing safely.
+Event schemas are versioned Java records with written compatibility rules,
+not Avro in a schema registry, and there is no service discovery server
+because Kubernetes already provides DNS. The reasoning for each is in
+[docs/adr](docs/adr/README.md).
 
-More detail on these decisions, along with the reasoning behind the rest
-of the project, is in [WALKTHROUGH.md](WALKTHROUGH.md).
+## Further reading
+
+- [WALKTHROUGH.md](WALKTHROUGH.md): how everything works and why, written
+  to be explained out loud
+- [docs/adr](docs/adr/README.md): the main architecture decisions
