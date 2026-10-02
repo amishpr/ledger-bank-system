@@ -76,7 +76,7 @@ jobs:
       # main, add `packages: write`, log in with docker/login-action, and set
       # push to true for that branch.
       - name: Build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: services
           build-args: SERVICE=${{ matrix.service }}
