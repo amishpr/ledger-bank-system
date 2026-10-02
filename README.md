@@ -13,7 +13,7 @@ post, and nothing already posted is ever edited or deleted.
 backend runs in your browser, so there is nothing to install and no account
 to make.
 
-![Dashboard screenshot](docs/screenshot.png)
+![Dashboard screenshot, running against the Spring Boot services](docs/screenshot.png)
 
 ## What this project actually does
 
@@ -34,21 +34,7 @@ account) happens because that service published an event to Kafka.
 
 ## Architecture
 
-```
-Browser (React dashboard)
-   |  REST /api/v1/**                        WebSocket /ws
-   v
-api-gateway :4000   (Spring Cloud Gateway: routing, CORS, rate limit, JWT, Swagger UI)
-   |-- /api/v1/accounts, /transactions  ->  ledger-service :8081               -> Postgres "ledger"
-   |-- /api/v1/recurring-transfers      ->  recurring-transfer-service :8082   -> Postgres "recurring"
-   |-- /api/v1/insights                 ->  insights-service :8083             -> Postgres "insights"
-   '-- /ws                              ->  notification-service :8084         (sockets only)
-
-Kafka topics
-   ledger.accounts.v1        account.created                    ledger -> recurring (account replica)
-   ledger.transactions.v1    transaction.posted / .reversed     ledger -> insights, notifications
-   recurring.transfers.v1    recurring-transfer.executed / ...  recurring -> notifications
-```
+![Architecture diagram: a React dashboard calls an API gateway, which routes to four Spring Boot services that exchange events over Kafka, each with its own Postgres database](docs/architecture.svg)
 
 | Service | What it owns |
 | --- | --- |
@@ -120,8 +106,9 @@ disagree. The reasoning behind each of these choices is in
 
 ## Tech stack
 
-**Backend:** Java 21, Spring Boot 4.1, Spring Cloud Gateway (2025.1),
-Spring Data JPA and Hibernate, `JdbcClient`, Flyway, Postgres 17, Apache
+**Backend:** Java 21 and the Spring Framework 7, through Spring Boot 4.1
+(Spring MVC, Spring Data JPA with Hibernate, Spring Security, Spring Kafka),
+Spring Cloud Gateway (2025.1), `JdbcClient`, Flyway, Postgres 17, Apache
 Kafka (KRaft) with Spring Kafka, Resilience4j, ShedLock, springdoc-openapi,
 Micrometer and OpenTelemetry, Maven.
 
@@ -214,6 +201,8 @@ All amounts are sent and received as strings of whole cents, for example
 `"1050"` for ten dollars and fifty cents. The base URL is the gateway,
 `http://localhost:4000/api/v1`. The OpenAPI documents for every service are
 browsable at **http://localhost:4000/swagger-ui.html**.
+
+![Swagger UI showing the ledger service's POST /transactions operation](docs/swagger-ui.png)
 
 | Method | Path | Description |
 |---|---|---|

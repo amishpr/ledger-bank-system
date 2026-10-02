@@ -123,7 +123,7 @@ def make_og_image() -> None:
     # title and border, inside the axis labels - so that scaling it to the
     # full 1200px width bleeds it off the left, right and bottom edges with
     # no seam. Those coordinates are specific to docs/screenshot.png.
-    plot = Image.open(SCREENSHOT).convert("RGB").crop((830, 1006, 2448, 1300))
+    plot = Image.open(SCREENSHOT).convert("RGB").crop((832, 1046, 2450, 1340))
     plot_h = round(plot.height * W / plot.width)
     plot = plot.resize((W, plot_h), Image.LANCZOS)
 
@@ -148,6 +148,9 @@ def make_og_image() -> None:
     # long enough to shrink in a chat client's preview.
     d.text((72, 178), "A double-entry core-banking ledger", font=font(34), fill=TEXT)
     d.text((72, 224), "with an append-only, idempotent transaction API.", font=font(34), fill=TEXT)
+
+    # What it is built with, since the card is the first thing a pasted link shows.
+    d.text((72, 306), "Java 21  \u00b7  Spring Boot  \u00b7  Kafka  \u00b7  Postgres", font=font(26, BOLD), fill=ACCENT_STRONG)
 
     # "Live demo" pill, mirroring the connection badge in the app header.
     label, pill_font = "LIVE DEMO", font(20, BOLD)

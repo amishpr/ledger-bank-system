@@ -8,7 +8,7 @@ way.
 ## The short version
 
 Ledger is a double entry ledger, the same kind of system that sits underneath a bank account or a
-product like Ramp or Brex. The backend is five Java and Spring Boot services behind a Spring Cloud
+product like Ramp or Brex. The backend is five Java services built with Spring Boot on the Spring Framework, behind a Spring Cloud
 Gateway. They talk to each other over REST when one needs an answer and over Kafka when one is
 announcing something that already happened, each keeps its own Postgres database, and a React
 dashboard updates in real time over a WebSocket.
@@ -372,8 +372,10 @@ the negative color reserved for destructive actions like canceling a recurring t
 
 ## Why each technology was chosen
 
-**Java 21 and Spring Boot 4.1.** Java is what most banks run their backends on, and Spring Boot is
-the default way to build Java services. Java 21 is the current long term support release that large
+**Java 21, the Spring Framework and Spring Boot 4.1.** Java is what most banks run their backends on.
+The Spring Framework supplies the core pieces (dependency injection, Spring MVC, transactions, JDBC),
+and Spring Boot sits on top of it with auto-configuration, starters and production features, which
+makes it the default way to build Java services. Java 21 is the current long term support release that large
 companies standardise on, and it brings records (every DTO and event here is one), sealed interfaces
 (the event hierarchy, so a `switch` over events must handle every type or fail to compile), pattern
 matching, and virtual threads, which are switched on for every service. Boot 4.1 is the current
