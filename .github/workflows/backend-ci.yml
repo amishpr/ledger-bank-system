@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Built and loaded locally, not pushed. To publish to GHCR on merges to
       # main, add `packages: write`, log in with docker/login-action, and set
